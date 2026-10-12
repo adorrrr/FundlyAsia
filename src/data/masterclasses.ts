@@ -1,0 +1,212 @@
+/**
+ * SAMPLE DATA — demo masterclasses and speakers for preview mode only.
+ * Loan Lab details (≈2 hours, 30 seats, 999 BDT) come from the current Fundly site.
+ * Speaker names, dates and venues are placeholders until the Fundly team confirms them.
+ */
+import type { Masterclass, Speaker } from '@/types';
+
+export const sampleSpeakers: Speaker[] = [
+  {
+    id: 'sp-1',
+    name: 'Farhana Kabir',
+    designation: 'SME credit advisor',
+    institution: 'Independent consultant',
+    bio: {
+      en: 'Farhana has spent over a decade reviewing SME loan files. She now helps owners organise their documents and records before they meet a lender.',
+      bn: 'ফারহানা এক দশকেরও বেশি সময় ধরে SME লোন ফাইল পর্যালোচনা করেছেন। এখন তিনি ঋণদাতার সাথে দেখা করার আগে মালিকদের কাগজপত্র ও হিসাব গোছাতে সাহায্য করেন।',
+    },
+  },
+  {
+    id: 'sp-2',
+    name: 'Tanvir Hasan',
+    designation: 'Chartered accountant',
+    institution: 'Independent practice',
+    bio: {
+      en: 'Tanvir works with small manufacturers and traders on bookkeeping, tax registration and the financial statements banks ask for.',
+      bn: 'তানভীর ছোট উৎপাদক ও ব্যবসায়ীদের সাথে হিসাবরক্ষণ, কর নিবন্ধন এবং ব্যাংক যে আর্থিক বিবরণী চায় তা নিয়ে কাজ করেন।',
+    },
+  },
+  {
+    id: 'sp-3',
+    name: 'Shirin Akter',
+    designation: 'Women’s enterprise mentor',
+    institution: 'Independent mentor',
+    bio: {
+      en: 'Shirin mentors women-led businesses moving from informal to formal finance, with a focus on first-time borrowers.',
+      bn: 'শিরিন অনানুষ্ঠানিক থেকে formal finance-এ যেতে চাওয়া নারী-নেতৃত্বাধীন ব্যবসাকে পরামর্শ দেন, বিশেষ করে প্রথমবার ঋণগ্রহীতাদের।',
+    },
+  },
+];
+
+const loanLabLearn = [
+  { en: 'What a bank checks before it says yes to an SME loan', bn: 'SME লোনে হ্যাঁ বলার আগে ব্যাংক কী কী যাচাই করে' },
+  { en: 'The documents to have ready, and how to organise them', bn: 'কোন কাগজপত্র প্রস্তুত রাখবেন এবং কীভাবে গোছাবেন' },
+  { en: 'How your records and bank statements tell your story', bn: 'আপনার হিসাব ও ব্যাংক স্টেটমেন্ট কীভাবে আপনার ব্যবসার গল্প বলে' },
+  { en: 'A practical checklist and your own next step', bn: 'কাজের একটি checklist এবং আপনার নিজের পরের ধাপ' },
+];
+
+export const sampleMasterclasses: Masterclass[] = [
+  {
+    id: 'mc-101',
+    slug: 'loan-lab-batch-01',
+    title: { en: 'Loan Lab — Batch 01', bn: 'Loan Lab — ব্যাচ ০১' },
+    topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
+    summary: {
+      en: 'An offline masterclass on what banks look for, with a practical checklist and live Q&A.',
+      bn: 'ব্যাংক কী দেখে তা নিয়ে অফলাইন মাস্টারক্লাস — কাজের checklist ও সরাসরি প্রশ্নোত্তর সহ।',
+    },
+    description: {
+      en: 'Loan Lab is Fundly’s main programme. In about two hours, an expert walks you through how lenders assess a small business, which gaps most often stop an application, and what to fix first. You leave with a checklist and a clear direction for your readiness.',
+      bn: 'Loan Lab হলো Fundly-র মূল প্রোগ্রাম। প্রায় দুই ঘণ্টায় একজন বিশেষজ্ঞ দেখাবেন ঋণদাতারা কীভাবে ছোট ব্যবসা মূল্যায়ন করেন, কোন ঘাটতিগুলো সবচেয়ে বেশি আবেদন আটকে দেয়, আর আগে কী ঠিক করতে হবে। আপনি একটি checklist এবং readiness-এর পরিষ্কার দিক-নির্দেশনা নিয়ে ফিরবেন।',
+    },
+    learn: loanLabLearn,
+    date: '2026-11-07',
+    startTime: '15:00',
+    endTime: '17:00',
+    venue: { en: 'Chattogram — venue to be confirmed', bn: 'চট্টগ্রাম — স্থান পরে নিশ্চিত করা হবে' },
+    capacity: 30,
+    seatsTaken: 18,
+    registrationDeadline: '2026-11-04',
+    fee: 999,
+    status: 'registration_open',
+    speakerId: 'sp-1',
+    coverTone: 'leaf',
+  },
+  {
+    id: 'mc-102',
+    slug: 'bookkeeping-banks-trust',
+    title: { en: 'Bookkeeping that banks trust', bn: 'যে হিসাব ব্যাংক বিশ্বাস করে' },
+    topic: { en: 'Financial records', bn: 'আর্থিক রেকর্ড' },
+    summary: {
+      en: 'Set up simple, consistent records that make your sales and costs easy for a lender to read.',
+      bn: 'সহজ ও নিয়মিত হিসাব রাখুন, যাতে ঋণদাতা আপনার বিক্রি ও খরচ সহজে বুঝতে পারেন।',
+    },
+    description: {
+      en: 'A hands-on session for owners who keep records in notebooks or not at all. Learn a simple monthly routine, which statements to prepare, and how to keep business and personal money apart.',
+      bn: 'যারা খাতায় হিসাব রাখেন বা একেবারেই রাখেন না, তাদের জন্য হাতে-কলমে সেশন। একটি সহজ মাসিক রুটিন, কোন বিবরণী প্রস্তুত করবেন, এবং ব্যবসা ও ব্যক্তিগত টাকা কীভাবে আলাদা রাখবেন তা শিখুন।',
+    },
+    learn: [
+      { en: 'A monthly bookkeeping routine you can keep', bn: 'একটি মাসিক হিসাবরক্ষণ রুটিন যা আপনি মেনে চলতে পারবেন' },
+      { en: 'Which statements a lender expects to see', bn: 'ঋণদাতা কোন বিবরণী দেখতে চান' },
+      { en: 'Separating business and personal money', bn: 'ব্যবসা ও ব্যক্তিগত টাকা আলাদা রাখা' },
+    ],
+    date: '2026-11-21',
+    startTime: '10:00',
+    endTime: '12:30',
+    venue: { en: 'Dhaka — venue to be confirmed', bn: 'ঢাকা — স্থান পরে নিশ্চিত করা হবে' },
+    capacity: 25,
+    seatsTaken: 25,
+    registrationDeadline: '2026-11-18',
+    fee: 999,
+    status: 'registration_open',
+    speakerId: 'sp-2',
+    coverTone: 'sky',
+  },
+  {
+    id: 'mc-103',
+    slug: 'loan-lab-batch-02',
+    title: { en: 'Loan Lab — Batch 02', bn: 'Loan Lab — ব্যাচ ০২' },
+    topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
+    summary: {
+      en: 'The second Loan Lab batch, for owners who missed Batch 01.',
+      bn: 'দ্বিতীয় Loan Lab ব্যাচ — যারা ব্যাচ ০১ মিস করেছেন তাদের জন্য।',
+    },
+    description: {
+      en: 'The same Loan Lab programme as Batch 01: how lenders assess small businesses, the gaps that stop applications, and a practical checklist to take home.',
+      bn: 'ব্যাচ ০১-এর মতোই Loan Lab প্রোগ্রাম: ঋণদাতারা কীভাবে ছোট ব্যবসা মূল্যায়ন করেন, কোন ঘাটতি আবেদন আটকে দেয়, আর বাড়ি নিয়ে যাওয়ার মতো একটি checklist।',
+    },
+    learn: loanLabLearn,
+    date: '2026-12-05',
+    startTime: '15:00',
+    endTime: '17:00',
+    venue: { en: 'Dhaka — venue to be confirmed', bn: 'ঢাকা — স্থান পরে নিশ্চিত করা হবে' },
+    capacity: 30,
+    seatsTaken: 4,
+    registrationDeadline: '2026-12-01',
+    fee: 999,
+    status: 'registration_open',
+    speakerId: 'sp-1',
+    coverTone: 'sand',
+  },
+  {
+    id: 'mc-104',
+    slug: 'trade-licence-tin-bin',
+    title: { en: 'Trade licence, TIN and BIN', bn: 'ট্রেড লাইসেন্স, TIN ও BIN' },
+    topic: { en: 'Compliance basics', bn: 'Compliance-এর মূল বিষয়' },
+    summary: {
+      en: 'A short free session on the registrations most lenders check first.',
+      bn: 'বেশিরভাগ ঋণদাতা প্রথমেই যে নিবন্ধনগুলো দেখেন, তা নিয়ে ছোট বিনামূল্যের সেশন।',
+    },
+    description: {
+      en: 'What each registration is, who needs it, and how to keep it current. Bring your questions.',
+      bn: 'প্রতিটি নিবন্ধন কী, কার দরকার, এবং কীভাবে হালনাগাদ রাখবেন। আপনার প্রশ্ন নিয়ে আসুন।',
+    },
+    learn: [
+      { en: 'When you need a TIN and when you need a BIN', bn: 'কখন TIN আর কখন BIN দরকার' },
+      { en: 'Keeping your trade licence valid', bn: 'ট্রেড লাইসেন্স বৈধ রাখা' },
+    ],
+    date: '2026-10-25',
+    startTime: '11:00',
+    endTime: '12:00',
+    venue: { en: 'Chattogram — venue to be confirmed', bn: 'চট্টগ্রাম — স্থান পরে নিশ্চিত করা হবে' },
+    capacity: 40,
+    seatsTaken: 31,
+    registrationDeadline: '2026-10-20',
+    fee: 0,
+    status: 'registration_closed',
+    speakerId: 'sp-2',
+    coverTone: 'sky',
+  },
+  {
+    id: 'mc-100',
+    slug: 'loan-lab-pilot',
+    title: { en: 'Loan Lab — Pilot', bn: 'Loan Lab — পাইলট' },
+    topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
+    summary: {
+      en: 'The pilot session that shaped the Loan Lab programme.',
+      bn: 'যে পাইলট সেশন থেকে Loan Lab প্রোগ্রামের রূপ এসেছে।',
+    },
+    description: {
+      en: 'Our first Loan Lab session, run with a small group of owners to test the format.',
+      bn: 'ফরম্যাট যাচাই করতে অল্প কয়েকজন মালিককে নিয়ে আমাদের প্রথম Loan Lab সেশন।',
+    },
+    learn: loanLabLearn.slice(0, 2),
+    date: '2026-09-20',
+    startTime: '15:00',
+    endTime: '17:00',
+    venue: { en: 'Chattogram', bn: 'চট্টগ্রাম' },
+    capacity: 20,
+    seatsTaken: 17,
+    registrationDeadline: '2026-09-16',
+    fee: 0,
+    status: 'completed',
+    speakerId: 'sp-1',
+    coverTone: 'leaf',
+  },
+  {
+    id: 'mc-105',
+    slug: 'women-entrepreneurs-formal-finance',
+    title: { en: 'Women entrepreneurs and formal finance', bn: 'নারী উদ্যোক্তা ও formal finance' },
+    topic: { en: 'First-time borrowing', bn: 'প্রথমবার ঋণ নেওয়া' },
+    summary: {
+      en: 'Preparing a first application as a woman-owned business.',
+      bn: 'নারী মালিকানাধীন ব্যবসা হিসেবে প্রথম আবেদনের প্রস্তুতি।',
+    },
+    description: {
+      en: 'Draft — content to be finalised with the speaker.',
+      bn: 'খসড়া — বক্তার সাথে বিষয়বস্তু চূড়ান্ত করা হবে।',
+    },
+    learn: [{ en: 'To be finalised', bn: 'চূড়ান্ত করা হবে' }],
+    date: '',
+    startTime: '',
+    endTime: '',
+    venue: { en: 'To be announced', bn: 'পরে জানানো হবে' },
+    capacity: 30,
+    seatsTaken: 0,
+    registrationDeadline: '',
+    fee: 999,
+    status: 'draft',
+    speakerId: 'sp-3',
+    coverTone: 'sand',
+  },
+];

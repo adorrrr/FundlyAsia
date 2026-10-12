@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------
+   Fundly tokens — light mode only.
+   Brand green comes from the Fundly logo; "brand" is the darker,
+   text-safe shade (5:1 on white); "brand-mark" is the logo green for
+   marks, bars and progress only — never for text.
+------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --paper: 245 248 247;      /* #F5F8F7 page background */
+  --surface: 255 255 255;    /* #FFFFFF content surfaces */
+  --mist: 236 242 240;       /* #ECF2F0 secondary surface */
+  --ink: 20 32 51;           /* #142033 primary text */
+  --slate: 86 100 118;       /* #566476 secondary text */
+  --line: 223 230 228;       /* #DFE6E4 borders */
+  --brand: 8 128 74;         /* #08804A actions, links */
+  --brand-mark: 2 190 98;    /* #02BE62 logo green */
+  --brand-soft: 227 246 236; /* #E3F6EC */
+  --brand-deep: 10 90 54;    /* #0A5A36 pressed */
+  --sky-soft: 228 238 250;   /* ambient light */
+  --ok: 21 128 61;
+  --ok-soft: 225 245 233;
+  --warn: 180 83 9;
+  --warn-soft: 254 243 224;
+  --bad: 185 28 28;
+  --bad-soft: 254 232 232;
+  --info: 29 78 216;
+  --info-soft: 232 239 253;
+  --nav-h: 68px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    scroll-padding-top: calc(var(--nav-h) + 16px);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  body {
+    @apply bg-paper text-ink font-sans text-body;
+    overflow-x: clip;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  html[lang='bn'] body { line-height: 1.75; }
+  html[lang='bn'] h1, html[lang='bn'] h2, html[lang='bn'] h3 { line-height: 1.3; letter-spacing: 0; }
+  h1, h2, h3, h4 { @apply text-ink font-semibold; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  ::selection { background: rgb(var(--brand-mark) / 0.22); }
+  :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; border-radius: 6px; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  img { max-width: 100%; }
+}
+
+@layer components {
+  /* Glass is reserved for floating chrome: nav, the hero panel, sticky bars, dialogs. */
+  .glass {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.82), rgb(255 255 255 / 0.66));
+    -webkit-backdrop-filter: saturate(1.6) blur(18px);
+    backdrop-filter: saturate(1.6) blur(18px);
+    @apply shadow-glass;
+  }
+  .surface { @apply bg-surface rounded-card shadow-hair; }
+  /* Hero floating cards: lighter, more translucent glass with a top highlight. */
+  .hero-glass {
+    position: relative;
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.86) 0%, rgb(255 255 255 / 0.58) 100%);
+    -webkit-backdrop-filter: saturate(1.5) blur(14px);
+    backdrop-filter: saturate(1.5) blur(14px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 0 0 1px rgb(148 163 184 / 0.22),
+      0 14px 34px -16px rgb(20 32 51 / 0.24);
+  }
+  .hero-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(120deg, rgb(255 255 255 / 0.55), transparent 40%);
+  }
+  .shell { @apply mx-auto w-full max-w-shell px-4 sm:px-6 lg:px-8; }
+  .link { @apply font-medium text-brand underline-offset-4 hover:underline; }
+  .skeleton { @apply relative overflow-hidden rounded-control bg-mist; }
+  .skeleton::after {
+    content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+  .ambient {
+    background:
+      radial-gradient(60rem 28rem at 85% -10%, rgb(var(--brand-mark) / 0.10), transparent 60%),
+      radial-gradient(48rem 26rem at 0% 0%, rgb(var(--sky-soft)), transparent 65%);
+  }
+}
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
