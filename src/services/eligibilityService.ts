@@ -4,7 +4,12 @@ import { ServiceError } from './errors';
 import { sampleResultContent } from '@/data/fixtures';
 import { bandFor } from '@/data/scoring';
 
-export type ResultWithUser = AssessmentResult & { userId: string };
+export type ResultWithUser = AssessmentResult & {
+  userId: string;
+  userName?: string;
+  businessName?: string;
+};
+
 
 export interface EligibilityService {
   getQuestions(opts?: { includeInactive?: boolean }): Promise<Question[]>;

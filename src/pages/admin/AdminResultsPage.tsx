@@ -31,7 +31,17 @@ export default function AdminResultsPage() {
   }, [all, q, band]);
 
   const exportCsv = () => {
-    downloadCsv('fundly-eligibility-results.csv', rows.map((r) => ({ result_id: r.id, sme: r.owner, business: r.business, assessed_on: r.date.slice(0, 10), score: r.score, readiness_level: d.bands[r.band], top_gaps: r.gaps.map((g) => g.en).join('; '), financing_need: r.intent ?? '', funding_amount: r.amountRange ? label('range', r.amountRange) : '' })));
+    downloadCsv('fundly-eligibility-results.csv', rows.map((r) => ({
+      result_id: r.id,
+      sme: r.owner,
+      business: r.business,
+      assessed_on: (r.date ?? '').slice(0, 10),
+      score: r.score,
+      readiness_level: d.bands[r.band],
+      top_gaps: (r.gaps ?? []).map((g) => g?.en ?? '').filter(Boolean).join('; '),
+      financing_need: r.intent ?? '',
+      funding_amount: r.amountRange ? label('range', r.amountRange) : '',
+    })));
     toast(d.admin.regs.exported, 'info');
   };
 
@@ -52,14 +62,15 @@ export default function AdminResultsPage() {
         columns={[
           { key: 'sme', header: a.sme, cell: (r) => (r.smeId ? <Link to={`/admin/smes/${r.smeId}`} className="font-semibold hover:text-brand">{r.owner}</Link> : r.owner) },
           { key: 'b', header: a.business, cell: (r) => r.business, hideBelow: 'md' },
-          { key: 'd', header: a.date, cell: (r) => formatDate(r.date), hideBelow: 'lg' },
+          { key: 'd', header: a.date, cell: (r) => (r.date ? formatDate(r.date) : '-'), hideBelow: 'lg' },
           { key: 's', header: a.score, cell: (r) => <span className="tnum text-lead font-bold">{formatNumber(r.score)}</span> },
           { key: 'l', header: a.level, cell: (r) => <BandBadge band={r.band} /> },
-          { key: 'g', header: a.gaps, cell: (r) => <span className="text-meta">{r.gaps.map((g) => l(g)).join(', ')}</span>, hideBelow: 'xl', className: 'max-w-[220px]' },
+          { key: 'g', header: a.gaps, cell: (r) => <span className="text-meta">{(r.gaps ?? []).map((g) => l(g)).filter(Boolean).join(', ') || '-'}</span>, hideBelow: 'xl', className: 'max-w-[220px]' },
           { key: 'n', header: a.need, cell: (r) => label('intent', r.intent), hideBelow: 'lg' },
           { key: 'a', header: a.amount, cell: (r) => (r.amountRange ? label('range', r.amountRange) : '-'), hideBelow: 'xl' },
         ]}
       />
     </div>
   );
+
 }

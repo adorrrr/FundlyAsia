@@ -930,19 +930,35 @@ final class AdminRepository
         $rows = $st->fetchAll();
 
         return array_map(function ($r) {
+            $improvements = json_decode((string) ($r['improvements_json'] ?? '[]'), true) ?: [];
+            $strengths = json_decode((string) ($r['strengths_json'] ?? '[]'), true) ?: [];
+            $nextStep = json_decode((string) ($r['next_step_json'] ?? '{}'), true) ?: ['en' => '', 'bn' => ''];
+
             return [
                 'id' => (string) $r['id'],
+                'assessmentId' => (string) ($r['assessment_id'] ?? $r['id']),
+                'userId' => (string) $r['user_id'],
+                'userName' => $r['full_name'],
+                'businessName' => $r['business_name'] ?? $r['full_name'],
+                'score' => (int) $r['score'],
+                'band' => $r['band'],
+                'strengths' => $strengths,
+                'improvements' => $improvements,
+                'nextStep' => $nextStep,
+                'createdAt' => $r['created_at'],
+                'sample' => (bool) ($r['sample'] ?? false),
+
+                // Backward-compatibility fields
                 'smeId' => (string) $r['user_id'],
                 'owner' => $r['full_name'],
                 'business' => $r['business_name'] ?? $r['full_name'],
                 'date' => $r['created_at'],
-                'score' => (int) $r['score'],
-                'band' => $r['band'],
-                'topGaps' => array_column(json_decode((string) $r['improvements_json'], true) ?: [], 'en'),
+                'topGaps' => array_column($improvements, 'en'),
                 'financingNeed' => 'exploring',
                 'amount' => 'BDT 10-25 lakh',
             ];
         }, $rows);
+
     }
 
     /** @return array<int,array<string,mixed>> */

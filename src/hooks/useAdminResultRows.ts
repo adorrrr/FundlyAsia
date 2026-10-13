@@ -23,21 +23,25 @@ export function useAdminResultRows() {
   const regs = useAsync(() => registrationService.listAll(), []);
   const rows = useMemo<ResultRow[]>(() => {
     return (results.data ?? []).map((r) => {
-      const sme = smes.data?.find((s) => s.profile.userId === r.userId);
-      const reg = regs.data?.find((x) => x.userId === r.userId && x.amountRange);
+      const targetUserId = r.userId ?? (r as unknown as { smeId?: string }).smeId;
+      const sme = smes.data?.find((s) => s.profile.userId === targetUserId);
+      const reg = regs.data?.find((x) => x.userId === targetUserId && x.amountRange);
+      const anyR = r as unknown as { owner?: string; business?: string; date?: string; topGaps?: string[] };
+
       return {
         id: r.id,
-        smeId: sme?.id,
-        owner: sme?.profile.ownerName ?? '-',
-        business: sme?.profile.businessName ?? '-',
-        date: r.createdAt,
+        smeId: sme?.id ?? targetUserId,
+        owner: sme?.profile.ownerName ?? r.userName ?? anyR.owner ?? '-',
+        business: sme?.profile.businessName ?? r.businessName ?? anyR.business ?? '-',
+        date: r.createdAt ?? anyR.date ?? '',
         score: r.score,
         band: r.band,
-        gaps: r.improvements,
+        gaps: r.improvements ?? (anyR.topGaps ? anyR.topGaps.map((g) => ({ en: g, bn: g })) : []),
         intent: sme?.financingIntent,
         amountRange: reg?.amountRange,
       };
     });
+
   }, [results.data, smes.data, regs.data]);
   return { rows, loading: results.loading || smes.loading || regs.loading };
 }

@@ -13,7 +13,8 @@ export const apiEligibilityService: EligibilityService = {
     }
   },
 
-  async getDraft() {
+  async getDraft(userId?: string) {
+    void userId;
     try {
       return await apiRequest<Assessment | null>('/assessments/current');
     } catch {
@@ -24,7 +25,7 @@ export const apiEligibilityService: EligibilityService = {
   async getAssessment(id: string) {
     void id;
     try {
-      const current = await this.getDraft();
+      const current = await this.getDraft('');
       if (!current) throw new ServiceError('not_found');
       return current;
     } catch {
@@ -59,12 +60,13 @@ export const apiEligibilityService: EligibilityService = {
   async submit(id: string) {
     void id;
     try {
-      const draft = await this.getDraft();
+      const draft = await this.getDraft('');
       const answers = draft?.answers ?? {};
       return await apiRequest<AssessmentResult>('/assessments/submit', {
         method: 'POST',
         json: { answers },
       });
+
     } catch {
       throw new ServiceError('unavailable');
     }
