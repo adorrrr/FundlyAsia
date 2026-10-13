@@ -100,23 +100,31 @@ export default function AdminMasterclassFormPage() {
     const e = validate(status);
     setErrors(e);
     if (Object.keys(e).length) {
+      toast(d.validation.fixErrors, 'error');
       requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
       return;
     }
     setBusy(mode);
-    let speakerId = v.speakerId;
-    if (speakerId === NEW_SPEAKER) speakerId = (await masterclassService.saveSpeaker(sp)).id;
-    const payload: MasterclassInput = {
-      ...v,
-      status,
-      speakerId,
-      learn: v.learn.filter((p) => !isBlank(p.en) || !isBlank(p.bn)),
-      summary: { en: summarise(v.description.en), bn: summarise(v.description.bn) },
-    };
-    if (editing && id) await masterclassService.update(id, payload);
-    else await masterclassService.create(payload);
-    toast(editing ? a.updated : a.created);
-    nav('/admin/masterclasses');
+    try {
+      let speakerId = v.speakerId;
+      if (speakerId === NEW_SPEAKER) speakerId = (await masterclassService.saveSpeaker(sp)).id;
+      const payload: MasterclassInput = {
+        ...v,
+        status,
+        speakerId,
+        learn: v.learn.filter((p) => !isBlank(p.en) || !isBlank(p.bn)),
+        summary: { en: summarise(v.description.en), bn: summarise(v.description.bn) },
+      };
+      if (editing && id) await masterclassService.update(id, payload);
+      else await masterclassService.create(payload);
+      toast(editing ? a.updated : a.created);
+      nav('/admin/masterclasses');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : d.common.errorTitle;
+      toast(msg, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const speakerOpts = [...(speakers.data ?? []).map((s) => ({ value: s.id, label: `${s.name} - ${s.institution}` })), { value: NEW_SPEAKER, label: `+ ${a.speakerNew}` }];

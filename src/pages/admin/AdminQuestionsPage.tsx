@@ -42,10 +42,16 @@ export default function AdminQuestionsPage() {
     return (data ?? []).filter((x) => (cat === 'all' || x.category === cat) && (!query || [x.id, x.text.en, x.text.bn].some((s) => s.toLowerCase().includes(query))));
   }, [data, q, cat]);
 
+  const [busy, setBusy] = useState(false);
+
   const toggle = async (x: Question, active: boolean) => {
-    setData((qs) => qs?.map((y) => (y.id === x.id ? { ...y, active } : y)));
-    await eligibilityService.setQuestionActive(x.id, active);
-    toast(a.toggled);
+    try {
+      setData((qs) => qs?.map((y) => (y.id === x.id ? { ...y, active } : y)));
+      await eligibilityService.setQuestionActive(x.id, active);
+      toast(a.toggled);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    }
   };
 
   const save = async () => {
@@ -59,12 +65,22 @@ export default function AdminQuestionsPage() {
     if (hasOptions(x.answerType) && !(x.options ?? []).some((o) => !isBlank(o.label.en))) e.options = d.validation.minOne;
     if (x.weight != null && (Number.isNaN(x.weight) || x.weight < 0)) e.weight = d.validation.positive;
     setErrors(e);
-    if (Object.keys(e).length) return;
-    const clean: Question = { ...x, options: hasOptions(x.answerType) ? (x.options ?? []).filter((o) => !isBlank(o.label.en)) : undefined, ruleRef: isBlank(x.ruleRef ?? '') ? null : x.ruleRef };
-    await eligibilityService.saveQuestion(clean);
-    setData((qs) => (edit.isNew ? [...(qs ?? []), clean] : qs?.map((y) => (y.id === clean.id ? clean : y))));
-    setEdit(null);
-    toast(a.saved);
+    if (Object.keys(e).length) {
+      toast(d.validation.fixErrors, 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const clean: Question = { ...x, options: hasOptions(x.answerType) ? (x.options ?? []).filter((o) => !isBlank(o.label.en)) : undefined, ruleRef: isBlank(x.ruleRef ?? '') ? null : x.ruleRef };
+      await eligibilityService.saveQuestion(clean);
+      setData((qs) => (edit.isNew ? [...(qs ?? []), clean] : qs?.map((y) => (y.id === clean.id ? clean : y))));
+      setEdit(null);
+      toast(a.saved);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const upd = (patch: Partial<Question>) => setEdit((s) => (s ? { ...s, q: { ...s.q, ...patch } } : s));
@@ -119,7 +135,7 @@ export default function AdminQuestionsPage() {
         onClose={() => setEdit(null)}
         title={edit?.isNew ? a.addTitle : a.editTitle}
         size="lg"
-        footer={<><Button variant="secondary" onClick={() => setEdit(null)}>{d.common.cancel}</Button><Button onClick={save}>{d.common.save}</Button></>}
+        footer={<><Button variant="secondary" onClick={() => setEdit(null)} disabled={busy}>{d.common.cancel}</Button><Button onClick={save} loading={busy}>{d.common.save}</Button></>}
       >
         {edit && (
           <div className="grid gap-4 sm:grid-cols-2">

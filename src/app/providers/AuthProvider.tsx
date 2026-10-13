@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authService } from '@/services';
+import { onAuthChange } from '@/services/api/authApi';
 import type { SessionUser } from '@/types';
 
 interface AuthValue {
@@ -20,11 +21,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() => authService.getSession());
 
   useEffect(() => {
+    // 1. Initial server session verification
     if (authService.syncSession) {
       authService.syncSession().then((u) => {
-        if (u) setUser(u);
-      }).catch(() => undefined);
+        setUser(u);
+      }).catch(() => {
+        setUser(null);
+      });
     }
+
+    // 2. Cross-tab synchronization listener
+    const unsub = onAuthChange((newUser) => {
+      setUser(newUser);
+    });
+
+    // 3. Tab visibility / window focus check
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible' && authService.syncSession) {
+        authService.syncSession().then((u) => {
+          setUser(u);
+        }).catch(() => {
+          setUser(null);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+    window.addEventListener('focus', onFocusOrVisible);
+
+    return () => {
+      unsub();
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+      window.removeEventListener('focus', onFocusOrVisible);
+    };
   }, []);
 
   const refresh = useCallback(() => {

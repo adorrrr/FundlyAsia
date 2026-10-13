@@ -1,22 +1,87 @@
 import type { SessionUser } from '@/types';
-import { ApiError, apiRequest } from './client';
+import { ApiError, apiRequest, setUnauthorizedHandler } from './client';
 import { ServiceError } from '../errors';
 import type { AuthService } from '../authService';
 
-const SESSION_KEY = 'fundly.api.session';
+const SESSION_STORAGE_KEY = 'fundly.api.session';
+const CROSS_TAB_KEY = 'fundly.auth.sync';
+
+type AuthEvent = { type: 'LOGIN'; user: SessionUser } | { type: 'LOGOUT'; time: number };
+
+const listeners = new Set<(user: SessionUser | null) => void>();
+
+export function onAuthChange(listener: (user: SessionUser | null) => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+let channel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    channel = new BroadcastChannel('fundly_auth_channel');
+    channel.onmessage = (e: MessageEvent<AuthEvent>) => {
+      const data = e.data;
+      if (data?.type === 'LOGOUT') {
+        try {
+          sessionStorage.removeItem(SESSION_STORAGE_KEY);
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+        listeners.forEach((fn) => fn(null));
+      } else if (data?.type === 'LOGIN' && data.user) {
+        try {
+          sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data.user));
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data.user));
+        } catch {
+          /* ignore */
+        }
+        listeners.forEach((fn) => fn(data.user));
+      }
+    };
+  }
+} catch {
+  /* ignore */
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === SESSION_STORAGE_KEY || e.key === CROSS_TAB_KEY) {
+      const current = loadSession();
+      listeners.forEach((fn) => fn(current));
+    }
+  });
+}
+
+setUnauthorizedHandler(() => {
+  saveSession(null);
+});
 
 export function saveSession(user: SessionUser | null) {
   try {
-    if (user) sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    else sessionStorage.removeItem(SESSION_KEY);
+    if (user) {
+      const str = JSON.stringify(user);
+      sessionStorage.setItem(SESSION_STORAGE_KEY, str);
+      localStorage.setItem(SESSION_STORAGE_KEY, str);
+      localStorage.setItem(CROSS_TAB_KEY, JSON.stringify({ type: 'LOGIN', time: Date.now() }));
+      channel?.postMessage({ type: 'LOGIN', user });
+    } else {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.setItem(CROSS_TAB_KEY, JSON.stringify({ type: 'LOGOUT', time: Date.now() }));
+      channel?.postMessage({ type: 'LOGOUT', time: Date.now() });
+    }
   } catch {
     /* ignore */
   }
+  listeners.forEach((fn) => fn(user));
 }
 
 export function loadSession(): SessionUser | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(SESSION_STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -43,8 +108,11 @@ export const apiAuthService: AuthService = {
       const me = await apiRequest<SessionUser>('/auth/me');
       saveSession(me);
       return me;
-    } catch {
-      // If server session is not active, return whatever is stored or null
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        saveSession(null);
+        return null;
+      }
       return loadSession();
     }
   },

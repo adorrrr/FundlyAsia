@@ -33,7 +33,11 @@ export default function AdminSpeakersPage() {
 
   const save = async () => {
     if (!draft) return;
-    if (isBlank(draft.name)) return setError(d.validation.required);
+    if (isBlank(draft.name)) {
+      setError(d.validation.required);
+      toast(d.validation.required, 'error');
+      return;
+    }
     setBusy(true);
     try {
       await masterclassService.saveSpeaker(draft);
@@ -41,8 +45,8 @@ export default function AdminSpeakersPage() {
       toast(a.saved);
       speakers.reload();
       classes.reload();
-    } catch {
-      toast(d.common.errorTitle);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
     } finally {
       setBusy(false);
     }
@@ -57,8 +61,8 @@ export default function AdminSpeakersPage() {
       toast(a.deleted);
       speakers.reload();
       classes.reload();
-    } catch {
-      toast(a.deleteFailed);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : a.deleteFailed, 'error');
     } finally {
       setDeleting(false);
     }

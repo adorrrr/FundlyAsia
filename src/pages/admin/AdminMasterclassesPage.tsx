@@ -52,9 +52,13 @@ export default function AdminMasterclassesPage() {
   };
 
   const changeStatus = async (m: Masterclass, s: MasterclassStatus) => {
-    await masterclassService.setStatus(m.id, s);
-    toast(a.updated);
-    reload();
+    try {
+      await masterclassService.setStatus(m.id, s);
+      toast(a.updated);
+      reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    }
   };
 
   return (

@@ -47,20 +47,38 @@ export default function AdminRegistrationsPage() {
     setManaging((m) => (m && m.id === r.id ? r : m));
   };
   const setStatus = async (r: Registration, s: RegistrationStatus) => {
-    replace(await registrationService.setStatus(r.id, s));
-    toast(a.updated);
+    try {
+      replace(await registrationService.setStatus(r.id, s));
+      toast(a.updated);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    }
   };
   const setPayment = async (r: Registration, s: PaymentStatus, reason?: string) => {
-    replace(await registrationService.setPaymentStatus(r.id, s, reason));
-    toast(a.updated);
+    try {
+      replace(await registrationService.setPaymentStatus(r.id, s, reason));
+      toast(a.updated);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    }
   };
   const applyCorrection = async () => {
     if (!managing) return;
-    if (isBlank(correction.reason)) return setCorrection((c) => ({ ...c, error: d.validation.required }));
+    if (isBlank(correction.reason)) {
+      setCorrection((c) => ({ ...c, error: d.validation.required }));
+      toast(d.validation.required, 'error');
+      return;
+    }
     setBusy(true);
-    await setPayment(managing, correction.status, correction.reason);
-    setBusy(false);
-    setCorrection({ status: 'paid', reason: '' });
+    try {
+      await setPayment(managing, correction.status, correction.reason);
+      setCorrection({ status: 'paid', reason: '' });
+      setManaging(null);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const exportCsv = () => {

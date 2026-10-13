@@ -18,6 +18,12 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorizedHandler = fn;
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   const { json, headers, ...rest } = init;
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -35,6 +41,9 @@ export async function apiRequest<T>(path: string, init: RequestInit & { json?: u
       code = body.code;
     } catch {
       /* non-JSON error */
+    }
+    if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/admin/login')) {
+      onUnauthorizedHandler?.();
     }
     throw new ApiError(res.status, message, code);
   }

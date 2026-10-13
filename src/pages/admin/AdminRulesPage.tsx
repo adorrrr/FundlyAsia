@@ -29,11 +29,19 @@ export default function AdminRulesPage() {
   const valid = total === 100 && areas.every((x) => x.weight >= 0);
 
   const save = async () => {
-    if (!valid) return;
+    if (!valid) {
+      toast(t(d.validation.weights, { n: formatNumber(total) }), 'error');
+      return;
+    }
     setBusy(true);
-    await eligibilityService.saveScoringAreas(areas);
-    setBusy(false);
-    toast(a.saved);
+    try {
+      await eligibilityService.saveScoringAreas(areas);
+      toast(a.saved);
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return <LoadingBlock rows={4} />;
