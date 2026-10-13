@@ -349,7 +349,7 @@ function Faq() {
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="shell pb-16 sm:pb-24" aria-labelledby="faq-title">
-      <div className="grid gap-8 rounded-[28px] border border-line bg-surface p-5 sm:p-8 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-14 lg:p-12">
+      <div className="grid gap-8 rounded-[28px] bg-surface p-5 sm:p-8 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-14 lg:p-12">
         <Reveal className="flex flex-col">
           <div>
             <p className="flex items-center gap-2 text-meta font-semibold uppercase tracking-[0.14em] text-brand">
