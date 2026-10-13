@@ -1,6 +1,7 @@
 export type ServiceErrorCode =
   | 'invalid_credentials'
   | 'invalid_otp'
+  | 'too_many_attempts'
   | 'invalid_token'
   | 'email_taken'
   | 'already_registered'
@@ -13,8 +14,8 @@ export type ServiceErrorCode =
   | 'has_registrations';
 
 export class ServiceError extends Error {
-  constructor(public code: ServiceErrorCode) {
-    super(code);
+  constructor(public code: ServiceErrorCode, message?: string) {
+    super(message || code);
   }
 }
 

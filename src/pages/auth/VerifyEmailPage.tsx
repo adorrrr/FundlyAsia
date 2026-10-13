@@ -6,8 +6,10 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { authService } from '@/services';
 import { Button } from '@/components/ui/Button';
+import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader } from '@/components/forms/AuthBits';
 import { OtpInput } from '@/components/forms/OtpInput';
+import { useToast } from '@/components/ui/Toast';
 
 const COOLDOWN = 30;
 
@@ -16,7 +18,9 @@ export default function VerifyEmailPage() {
   useDocumentTitle(d.auth.verifyTitle);
   const { user, refresh } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const [params] = useSearchParams();
+  const targetEmail = user?.email || params.get('email') || '';
   const [code, setCode] = useState('');
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -29,8 +33,8 @@ export default function VerifyEmailPage() {
     return () => clearTimeout(id);
   }, [left]);
 
-  if (!user) return <Navigate to="/signup" replace />;
-  if (user.emailVerified) return <Navigate to="/dashboard" replace />;
+  if (!targetEmail) return <Navigate to="/signup" replace />;
+  if (user?.emailVerified) return <Navigate to="/dashboard" replace />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -38,12 +42,14 @@ export default function VerifyEmailPage() {
     setBusy(true);
     setError(undefined);
     try {
-      await authService.verifyEmail(user.email, code);
+      await authService.verifyEmail(targetEmail, code);
       const u = refresh();
       const next = params.get('next');
       nav(u?.hasBusinessProfile ? '/dashboard' : `/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
-    } catch {
-      setError(d.validation.otpWrong);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : d.validation.otpWrong;
+      setError(msg);
+      toast(msg, 'error');
       setCode('');
     } finally {
       setBusy(false);
@@ -51,15 +57,22 @@ export default function VerifyEmailPage() {
   };
 
   const resend = async () => {
-    await authService.resendOtp(user.email);
-    setResent(true);
-    setLeft(COOLDOWN);
+    try {
+      await authService.resendOtp(targetEmail);
+      setResent(true);
+      setLeft(COOLDOWN);
+      toast(d.auth.resent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not resend code.';
+      toast(msg, 'error');
+    }
   };
 
   return (
     <>
-      <AuthHeader title={d.auth.verifyTitle} body={t(d.auth.verifyBody, { email: user.email })} />
+      <AuthHeader title={d.auth.verifyTitle} body={t(d.auth.verifyBody, { email: targetEmail })} />
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+        {error && <Notice tone="warn">{error}</Notice>}
         <OtpInput value={code} onChange={(v) => { setCode(v); setError(undefined); }} invalid={!!error} describedBy={error ? 'otp-err' : undefined} />
         {error && (
           <p id="otp-err" role="alert" className="flex items-center gap-1.5 text-meta text-bad"><AlertCircle className="h-3.5 w-3.5" aria-hidden />{error}</p>

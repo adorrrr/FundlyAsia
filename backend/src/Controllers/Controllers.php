@@ -76,7 +76,7 @@ final class AuthController
             throw new HttpException(422, 'validation', 'Email and verification code are required.');
         }
 
-        Auth::verifyOtp($email, $code, $purpose);
+        Auth::verifyOtp($email, $code, $purpose, $req->ip());
         Response::json(['verified' => true]);
     }
 

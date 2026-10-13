@@ -1,21 +1,22 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useI18n } from '@/i18n/I18nProvider';
-import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
-import { authService } from '@/services';
+import { authService, ServiceError } from '@/services';
 import { Button } from '@/components/ui/Button';
 import { PasswordField, TextField } from '@/components/ui/Field';
+import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader, GoogleButton, OrDivider } from '@/components/forms/AuthBits';
+import { useToast } from '@/components/ui/Toast';
 import { isBlank, isEmail, isStrongPassword } from '@/utils/validation';
 
-type Errors = Partial<Record<'name' | 'email' | 'password' | 'confirm', string>>;
+type Errors = Partial<Record<'name' | 'email' | 'password' | 'confirm' | 'form', string>>;
 
 export default function SignupPage() {
   const { d } = useI18n();
   useDocumentTitle(d.auth.signupTitle);
-  const { refresh } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const [params] = useSearchParams();
   const next = params.get('next');
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
@@ -41,10 +42,20 @@ export default function SignupPage() {
       return;
     }
     setBusy(true);
-    await authService.signup({ name: form.name.trim(), email: form.email.trim(), password: form.password });
-    refresh();
-    setBusy(false);
-    nav(`/verify-email${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+    try {
+      await authService.signup({ name: form.name.trim(), email: form.email.trim(), password: form.password });
+      nav(`/verify-email?email=${encodeURIComponent(form.email.trim())}${next ? `&next=${encodeURIComponent(next)}` : ''}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create account.';
+      if (err instanceof ServiceError && err.code === 'email_taken') {
+        setErrors({ email: 'An account with this email already exists.' });
+      } else {
+        setErrors({ form: msg });
+      }
+      toast(msg, 'error');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -53,6 +64,7 @@ export default function SignupPage() {
       <GoogleButton />
       <OrDivider />
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+        {errors.form && <Notice tone="warn">{errors.form}</Notice>}
         <div id="su-name"><TextField label={d.auth.name} autoComplete="name" value={form.name} onChange={set('name')} error={errors.name} required /></div>
         <div id="su-email"><TextField label={d.auth.email} type="email" autoComplete="email" value={form.email} onChange={set('email')} error={errors.email} required /></div>
         <div id="su-password"><PasswordField label={d.auth.password} autoComplete="new-password" value={form.password} onChange={set('password')} error={errors.password} hint={d.auth.passwordHint} required /></div>

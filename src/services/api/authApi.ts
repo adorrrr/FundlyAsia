@@ -127,10 +127,15 @@ export const apiAuthService: AuthService = {
       saveSession(user);
       return user;
     } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 422 || e.status === 429)) {
-        throw new ServiceError('invalid_credentials');
+      if (e instanceof ApiError) {
+        if (e.status === 429) {
+          throw new ServiceError('too_many_attempts', e.message);
+        }
+        if (e.status === 401 || e.status === 422) {
+          throw new ServiceError('invalid_credentials', e.message);
+        }
       }
-      throw new ServiceError('unavailable');
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
     }
   },
 
@@ -140,14 +145,15 @@ export const apiAuthService: AuthService = {
         method: 'POST',
         json: input,
       });
-      saveSession(user);
+      // Do not saveSession yet; user must verify OTP before account is created & authenticated
       return user;
     } catch (e) {
       if (e instanceof ApiError) {
-        if (e.status === 409) throw new ServiceError('email_taken');
-        if (e.status === 422) throw new ServiceError('validation');
+        if (e.status === 409) throw new ServiceError('email_taken', e.message);
+        if (e.status === 429) throw new ServiceError('too_many_attempts', e.message);
+        if (e.status === 422) throw new ServiceError('validation', e.message);
       }
-      throw new ServiceError('unavailable');
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
     }
   },
 
@@ -161,8 +167,11 @@ export const apiAuthService: AuthService = {
       saveSession(me);
       return me;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 400) throw new ServiceError('invalid_otp');
-      throw new ServiceError('unavailable');
+      if (e instanceof ApiError) {
+        if (e.status === 429) throw new ServiceError('too_many_attempts', e.message);
+        if (e.status === 400 || e.status === 422) throw new ServiceError('invalid_otp', e.message);
+      }
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
     }
   },
 
@@ -172,8 +181,11 @@ export const apiAuthService: AuthService = {
         method: 'POST',
         json: { email, purpose: 'signup' },
       });
-    } catch {
-      throw new ServiceError('unavailable');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 429) {
+        throw new ServiceError('too_many_attempts', e.message);
+      }
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
     }
   },
 
@@ -195,7 +207,7 @@ export const apiAuthService: AuthService = {
         json: { token, password },
       });
     } catch (e) {
-      if (e instanceof ApiError && e.status === 400) throw new ServiceError('invalid_token');
+      if (e instanceof ApiError && e.status === 400) throw new ServiceError('invalid_token', e.message);
       throw new ServiceError('unavailable');
     }
   },
@@ -209,10 +221,15 @@ export const apiAuthService: AuthService = {
       saveSession(admin);
       return admin;
     } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 422 || e.status === 429)) {
-        throw new ServiceError('invalid_credentials');
+      if (e instanceof ApiError) {
+        if (e.status === 429) {
+          throw new ServiceError('too_many_attempts', e.message);
+        }
+        if (e.status === 401 || e.status === 422) {
+          throw new ServiceError('invalid_credentials', e.message);
+        }
       }
-      throw new ServiceError('unavailable');
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
     }
   },
 

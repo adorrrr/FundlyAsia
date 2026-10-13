@@ -10,11 +10,14 @@ import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader, GoogleButton, OrDivider } from '@/components/forms/AuthBits';
 import { isEmail, isStrongPassword } from '@/utils/validation';
 
+import { useToast } from '@/components/ui/Toast';
+
 export default function LoginPage() {
   const { d } = useI18n();
   useDocumentTitle(d.auth.loginTitle);
   const { refresh } = useAuth();
   const nav = useNavigate();
+  const toast = useToast();
   const [params] = useSearchParams();
   const next = params.get('next');
   const [email, setEmail] = useState('');
@@ -36,8 +39,10 @@ export default function LoginPage() {
       if (!u?.emailVerified) nav('/verify-email');
       else if (!u.hasBusinessProfile) nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
       else nav(next && next.startsWith('/') ? next : '/dashboard');
-    } catch {
-      setErrors({ form: d.auth.invalidCreds });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : d.auth.invalidCreds;
+      setErrors({ form: msg });
+      toast(msg, 'error');
     } finally {
       setBusy(false);
     }
