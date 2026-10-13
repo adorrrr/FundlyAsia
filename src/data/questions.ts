@@ -1,5 +1,5 @@
 /**
- * SAMPLE QUESTION BANK — mirrors the Fundly 1.0 brief. In production this list is
+ * SAMPLE QUESTION BANK - mirrors the Fundly 1.0 brief. In production this list is
  * fetched from the API (eligibilityService.getQuestions) and rendered by
  * <QuestionField>. Weights and rule references are intentionally null: the mapping
  * from questions to scoring areas has not been approved yet.
@@ -28,7 +28,7 @@ const yesNo = [opt('yes', 'Yes', 'হ্যাঁ'), opt('no', 'No', 'না')];
 const base = { weight: null, ruleRef: null, active: true, required: true } as const;
 
 export const sampleQuestions: Question[] = [
-  // Step 1 — Business information (prefilled from the business profile)
+  // Step 1 - Business information (prefilled from the business profile)
   {
     ...base,
     id: 'Q-BI-01',
@@ -70,7 +70,7 @@ export const sampleQuestions: Question[] = [
     prefillFrom: 'location',
   },
 
-  // Step 2 — Business financials and records
+  // Step 2 - Business financials and records
   {
     ...base,
     id: 'Q-FN-01',
@@ -108,7 +108,7 @@ export const sampleQuestions: Question[] = [
     ],
   },
 
-  // Step 3 — Banking
+  // Step 3 - Banking
   {
     ...base,
     id: 'Q-BK-01',
@@ -137,7 +137,7 @@ export const sampleQuestions: Question[] = [
     options: [...yesNo, opt('partial', 'Partial', 'আংশিক')],
   },
 
-  // Step 4 — Compliance
+  // Step 4 - Compliance
   {
     ...base,
     id: 'Q-CP-01',
@@ -170,7 +170,7 @@ export const sampleQuestions: Question[] = [
     ],
   },
 
-  // Step 5 — Existing debt
+  // Step 5 - Existing debt
   {
     ...base,
     id: 'Q-DB-01',
@@ -213,7 +213,7 @@ export const sampleQuestions: Question[] = [
     showWhen: { questionId: 'Q-DB-01', equals: 'yes' },
   },
 
-  // Step 6 — Funding requirement
+  // Step 6 - Funding requirement
   {
     ...base,
     id: 'Q-FD-01',

@@ -1,5 +1,5 @@
 /**
- * SAMPLE DATA — demo masterclasses and speakers for preview mode only.
+ * SAMPLE DATA - demo masterclasses and speakers for preview mode only.
  * Loan Lab details (≈2 hours, 30 seats, 999 BDT) come from the current Fundly site.
  * Speaker names, dates and venues are placeholders until the Fundly team confirms them.
  */
@@ -49,11 +49,11 @@ export const sampleMasterclasses: Masterclass[] = [
   {
     id: 'mc-101',
     slug: 'loan-lab-batch-01',
-    title: { en: 'Loan Lab — Batch 01', bn: 'Loan Lab — ব্যাচ ০১' },
+    title: { en: 'Loan Lab - Batch 01', bn: 'Loan Lab - ব্যাচ ০১' },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
     summary: {
       en: 'An offline masterclass on what banks look for, with a practical checklist and live Q&A.',
-      bn: 'ব্যাংক কী দেখে তা নিয়ে অফলাইন মাস্টারক্লাস — কাজের checklist ও সরাসরি প্রশ্নোত্তর সহ।',
+      bn: 'ব্যাংক কী দেখে তা নিয়ে অফলাইন মাস্টারক্লাস - কাজের checklist ও সরাসরি প্রশ্নোত্তর সহ।',
     },
     description: {
       en: 'Loan Lab is Fundly’s main programme. In about two hours, an expert walks you through how lenders assess a small business, which gaps most often stop an application, and what to fix first. You leave with a checklist and a clear direction for your readiness.',
@@ -63,7 +63,7 @@ export const sampleMasterclasses: Masterclass[] = [
     date: '2026-11-07',
     startTime: '15:00',
     endTime: '17:00',
-    venue: { en: 'Chattogram — venue to be confirmed', bn: 'চট্টগ্রাম — স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'Chattogram - venue to be confirmed', bn: 'চট্টগ্রাম - স্থান পরে নিশ্চিত করা হবে' },
     capacity: 30,
     seatsTaken: 18,
     registrationDeadline: '2026-11-04',
@@ -93,7 +93,7 @@ export const sampleMasterclasses: Masterclass[] = [
     date: '2026-11-21',
     startTime: '10:00',
     endTime: '12:30',
-    venue: { en: 'Dhaka — venue to be confirmed', bn: 'ঢাকা — স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'Dhaka - venue to be confirmed', bn: 'ঢাকা - স্থান পরে নিশ্চিত করা হবে' },
     capacity: 25,
     seatsTaken: 25,
     registrationDeadline: '2026-11-18',
@@ -105,11 +105,11 @@ export const sampleMasterclasses: Masterclass[] = [
   {
     id: 'mc-103',
     slug: 'loan-lab-batch-02',
-    title: { en: 'Loan Lab — Batch 02', bn: 'Loan Lab — ব্যাচ ০২' },
+    title: { en: 'Loan Lab - Batch 02', bn: 'Loan Lab - ব্যাচ ০২' },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
     summary: {
       en: 'The second Loan Lab batch, for owners who missed Batch 01.',
-      bn: 'দ্বিতীয় Loan Lab ব্যাচ — যারা ব্যাচ ০১ মিস করেছেন তাদের জন্য।',
+      bn: 'দ্বিতীয় Loan Lab ব্যাচ - যারা ব্যাচ ০১ মিস করেছেন তাদের জন্য।',
     },
     description: {
       en: 'The same Loan Lab programme as Batch 01: how lenders assess small businesses, the gaps that stop applications, and a practical checklist to take home.',
@@ -119,7 +119,7 @@ export const sampleMasterclasses: Masterclass[] = [
     date: '2026-12-05',
     startTime: '15:00',
     endTime: '17:00',
-    venue: { en: 'Dhaka — venue to be confirmed', bn: 'ঢাকা — স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'Dhaka - venue to be confirmed', bn: 'ঢাকা - স্থান পরে নিশ্চিত করা হবে' },
     capacity: 30,
     seatsTaken: 4,
     registrationDeadline: '2026-12-01',
@@ -148,7 +148,7 @@ export const sampleMasterclasses: Masterclass[] = [
     date: '2026-10-25',
     startTime: '11:00',
     endTime: '12:00',
-    venue: { en: 'Chattogram — venue to be confirmed', bn: 'চট্টগ্রাম — স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'Chattogram - venue to be confirmed', bn: 'চট্টগ্রাম - স্থান পরে নিশ্চিত করা হবে' },
     capacity: 40,
     seatsTaken: 31,
     registrationDeadline: '2026-10-20',
@@ -160,7 +160,7 @@ export const sampleMasterclasses: Masterclass[] = [
   {
     id: 'mc-100',
     slug: 'loan-lab-pilot',
-    title: { en: 'Loan Lab — Pilot', bn: 'Loan Lab — পাইলট' },
+    title: { en: 'Loan Lab - Pilot', bn: 'Loan Lab - পাইলট' },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
     summary: {
       en: 'The pilot session that shaped the Loan Lab programme.',
@@ -193,8 +193,8 @@ export const sampleMasterclasses: Masterclass[] = [
       bn: 'নারী মালিকানাধীন ব্যবসা হিসেবে প্রথম আবেদনের প্রস্তুতি।',
     },
     description: {
-      en: 'Draft — content to be finalised with the speaker.',
-      bn: 'খসড়া — বক্তার সাথে বিষয়বস্তু চূড়ান্ত করা হবে।',
+      en: 'Draft - content to be finalised with the speaker.',
+      bn: 'খসড়া - বক্তার সাথে বিষয়বস্তু চূড়ান্ত করা হবে।',
     },
     learn: [{ en: 'To be finalised', bn: 'চূড়ান্ত করা হবে' }],
     date: '',

@@ -16,7 +16,7 @@ export interface AuthService {
   logout(): Promise<void>;
 }
 
-/** Demo session marker only — holds an id and role, never credentials. */
+/** Demo session marker only - holds an id and role, never credentials. */
 const SESSION_KEY = 'fundly.demo.session';
 const DEMO_OTP = '123456';
 

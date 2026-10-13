@@ -1,7 +1,7 @@
 /**
  * Readiness bands and the six initial scoring weights from the Fundly 1.0 brief.
  * These are PRELIMINARY and must be validated with lenders. No question-to-area
- * mapping is defined here on purpose — it has not been approved.
+ * mapping is defined here on purpose - it has not been approved.
  */
 import type { ReadinessBand, ScoringArea } from '@/types';
 

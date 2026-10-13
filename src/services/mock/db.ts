@@ -4,7 +4,7 @@
  * Holds sample data so every screen works without a backend. State is kept in
  * memory and mirrored to sessionStorage so a page refresh doesn't wipe your
  * preview. It never stores passwords, OTPs or payment credentials, and it is
- * NOT a security boundary — real authorisation must live on the server.
+ * NOT a security boundary - real authorisation must live on the server.
  */
 import { sampleMasterclasses, sampleSpeakers } from '@/data/masterclasses';
 import { sampleQuestions } from '@/data/questions';
@@ -107,7 +107,7 @@ function load(): DbState {
       if (parsed.version === VERSION) return parsed;
     }
   } catch {
-    /* storage unavailable — fall back to a fresh seed */
+    /* storage unavailable - fall back to a fresh seed */
   }
   return seed();
 }
@@ -124,7 +124,7 @@ function persist() {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state, stripBlobs));
   } catch {
-    /* quota or privacy mode — the in-memory copy still works */
+    /* quota or privacy mode - the in-memory copy still works */
   }
 }
 

@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 /* ------------------------------------------------------------------
-   Fundly tokens — light mode only.
+   Fundly tokens - light mode only.
    Brand green comes from the Fundly logo; "brand" is the darker,
    text-safe shade (5:1 on white); "brand-mark" is the logo green for
-   marks, bars and progress only — never for text.
+   marks, bars and progress only - never for text.
 ------------------------------------------------------------------- */
 :root {
   color-scheme: light;

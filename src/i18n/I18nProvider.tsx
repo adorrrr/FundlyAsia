@@ -42,7 +42,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
-      /* preference only — safe to ignore */
+      /* preference only - safe to ignore */
     }
   }, []);
 

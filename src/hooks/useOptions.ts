@@ -11,5 +11,5 @@ export function useOptions() {
 export function useOptionLabel() {
   const { d } = useI18n();
   return <K extends keyof Dict['options']>(group: K, value: string | undefined) =>
-    value ? ((d.options[group] as Record<string, string>)[value] ?? value) : '—';
+    value ? ((d.options[group] as Record<string, string>)[value] ?? value) : '-';
 }

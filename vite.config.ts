@@ -7,6 +7,11 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  server: {
+    watch: {
+      ignored: ['**/*.zip', '**/dist/**'],
+    },
+  },
   build: {
     rollupOptions: {
       output: {

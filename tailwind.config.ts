@@ -33,7 +33,7 @@ export default {
         sans: ['"Hanken Grotesk Variable"', '"Anek Bangla Variable"', 'system-ui', 'sans-serif'],
       },
       fontSize: {
-        // Modular scale (~1.25) — hero is fluid and set in CSS.
+        // Modular scale (~1.25) - hero is fluid and set in CSS.
         meta: ['0.8125rem', { lineHeight: '1.25rem' }],
         body: ['0.9375rem', { lineHeight: '1.6rem' }],
         lead: ['1.0625rem', { lineHeight: '1.75rem' }],

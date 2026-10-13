@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
         <StatTile label={a.totalRegistrations} value={formatNumber(s.totalRegistrations)} />
         <StatTile label={a.upcoming} value={formatNumber(s.upcomingMasterclasses)} />
         <StatTile label={a.checks} value={formatNumber(s.eligibilityChecks)} />
-        <StatTile label={a.avgScore} value={s.averageScore != null ? formatNumber(s.averageScore) : '—'} />
+        <StatTile label={a.avgScore} value={s.averageScore != null ? formatNumber(s.averageScore) : '-'} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">

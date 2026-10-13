@@ -58,7 +58,7 @@ export default function AdminResultsPage() {
           { key: 'l', header: a.level, cell: (r) => <BandBadge band={r.band} /> },
           { key: 'g', header: a.gaps, cell: (r) => <span className="text-meta">{r.gaps.map((g) => l(g)).join(', ')}</span>, hideBelow: 'xl', className: 'max-w-[220px]' },
           { key: 'n', header: a.need, cell: (r) => label('intent', r.intent), hideBelow: 'lg' },
-          { key: 'a', header: a.amount, cell: (r) => (r.amountRange ? label('range', r.amountRange) : '—'), hideBelow: 'xl' },
+          { key: 'a', header: a.amount, cell: (r) => (r.amountRange ? label('range', r.amountRange) : '-'), hideBelow: 'xl' },
         ]}
       />
     </div>

@@ -5,7 +5,7 @@ import type { ReadinessBand } from '@/types';
 import { cn } from '@/utils/cn';
 
 /**
- * The Fundly bar motif — three stacked bars echo the "F" in the logo.
+ * The Fundly bar motif - three stacked bars echo the "F" in the logo.
  * A single bar grows from the left using transform only.
  */
 export function GrowBar({ value, className, delay = 0, tone = 'mark' }: { value: number; className?: string; delay?: number; tone?: 'mark' | 'ink' | 'soft' }) {

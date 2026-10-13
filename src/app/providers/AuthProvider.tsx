@@ -14,7 +14,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 /**
  * Interface-level session state. In preview mode this is a demo marker in
  * sessionStorage; the live app will read an httpOnly session from the server.
- * Route guards here only shape navigation — they are not security.
+ * Route guards here only shape navigation - they are not security.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() => authService.getSession());

@@ -119,7 +119,7 @@ export default function AdminMasterclassFormPage() {
     nav('/admin/masterclasses');
   };
 
-  const speakerOpts = [...(speakers.data ?? []).map((s) => ({ value: s.id, label: `${s.name} — ${s.institution}` })), { value: NEW_SPEAKER, label: `+ ${a.speakerNew}` }];
+  const speakerOpts = [...(speakers.data ?? []).map((s) => ({ value: s.id, label: `${s.name} - ${s.institution}` })), { value: NEW_SPEAKER, label: `+ ${a.speakerNew}` }];
 
   return (
     <form onSubmit={(e) => save('save', e)} noValidate>

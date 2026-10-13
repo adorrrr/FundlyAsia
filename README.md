@@ -1,4 +1,4 @@
-# Fundly 1.0 — Frontend
+# Fundly 1.0 - Frontend
 
 Financing-readiness platform for SMEs in Bangladesh. This is a **frontend-only** build: every screen works on in-browser sample data, and nothing is sent to a server.
 
@@ -24,7 +24,17 @@ You need Node 18 or newer. Fonts are self-hosted through `@fontsource-variable` 
 Sample data is kept in `sessionStorage` (`fundly.demo.v1`) so a refresh keeps your changes. Close the tab to reset.
 
 ### Deploying
-This is an SPA, so every route has to fall back to `index.html`. `public/.htaccess` (cPanel/Apache), `public/_redirects` (Netlify) and `vercel.json` are included for that.
+This is a static single-page app (SPA). Build it with `npm run build`, then upload the **contents** of `dist/` to your hosting document root (usually `public_html/` in cPanel). Do not upload the source files or the `dist` directory itself. The build includes the Apache `.htaccess` rewrite rule so direct visits and refreshes on routes such as `/admin/login` load the app.
+
+For cPanel:
+1. Run `npm run build` locally.
+2. Open **File Manager** and go to the domain's document root (usually `public_html/`).
+3. Upload the files and folders inside `dist/`, including `.htaccess`. Enable **Show Hidden Files (dotfiles)** in File Manager if `.htaccess` is not visible.
+4. Visit your domain and refresh a nested route to confirm the SPA fallback works. If nested routes return 404, ask the host to enable Apache `mod_rewrite` and allow `.htaccess` overrides.
+
+`public/_redirects` (Netlify) and `vercel.json` (Vercel) are also included for those platforms.
+
+**Important:** this build is a frontend preview, not a production service. Authentication (including admin login), data, payments, and scoring are mocked in the browser. Do not use it to store real customer data or rely on its admin routes for access control. A real launch requires a backend with server-side authentication, authorization, persistence, and payment integration.
 
 ## Stack
 React 18 + Vite 6 + TypeScript, Tailwind CSS 3, React Router 6 (lazy-loaded routes), Framer Motion 11, Lucide icons.

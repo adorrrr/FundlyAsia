@@ -28,8 +28,8 @@ export function useAdminResultRows() {
       return {
         id: r.id,
         smeId: sme?.id,
-        owner: sme?.profile.ownerName ?? '—',
-        business: sme?.profile.businessName ?? '—',
+        owner: sme?.profile.ownerName ?? '-',
+        business: sme?.profile.businessName ?? '-',
         date: r.createdAt,
         score: r.score,
         band: r.band,

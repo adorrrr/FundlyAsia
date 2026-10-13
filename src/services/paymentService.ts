@@ -1,5 +1,5 @@
 /**
- * bKash payment adapter — PREVIEW ONLY.
+ * bKash payment adapter - PREVIEW ONLY.
  *
  * Production flow: the server creates a bKash checkout (create payment), the browser
  * is redirected to bKash's hosted page, and bKash calls back the server, which executes
@@ -20,7 +20,7 @@ export interface PaymentService {
   startCheckout(registrationId: string): Promise<{ checkoutUrl: string | null }>;
   /** Live: asks the server for the verified status. */
   checkStatus(registrationId: string): Promise<Registration>;
-  /** Preview only — never present in the live adapter. */
+  /** Preview only - never present in the live adapter. */
   previewOutcome?(registrationId: string, outcome: PreviewOutcome): Promise<Registration>;
 }
 

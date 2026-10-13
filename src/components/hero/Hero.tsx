@@ -103,20 +103,12 @@ export function Hero() {
       <HeroBackdrop />
 
       <div className="shell relative">
-        {/* Zone A — copy */}
+        {/* Zone A - copy */}
         <div className="mx-auto flex max-w-[52rem] flex-col items-center pt-10 text-center sm:pt-14 lg:pt-16">
-          <motion.p
-            {...rise(0, 8)}
-            className="inline-flex items-center gap-2 rounded-full border border-[rgb(148_163_184/0.25)] bg-white/70 px-3.5 py-1.5 text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-brand backdrop-blur"
-          >
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-brand-mark shadow-[0_0_0_3px_rgb(2_190_98/0.18)]" />
-            {h.eyebrow}
-          </motion.p>
-
           <motion.h1
             id="hero-title"
             {...rise(0.08, 18)}
-            className="mt-6 text-[clamp(2.25rem,1.35rem+4.2vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink"
+            className="text-[clamp(2.25rem,1.35rem+4.2vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink"
           >
             <span className="block">{h.titleA}</span>
             <span className="block">{h.titleB}</span>
@@ -141,7 +133,7 @@ export function Hero() {
           </motion.p>
         </div>
 
-        {/* Zones B + C — device and floating cards (illustration) */}
+        {/* Zones B + C - device and floating cards (illustration) */}
         <figure className="relative mx-auto mt-12 sm:mt-14" role="img" aria-label={h.illustration}>
           <div aria-hidden>
             {/* Phone: cropped with a fade on mobile, full on larger screens */}

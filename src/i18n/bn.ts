@@ -1,11 +1,11 @@
 import type { Dict } from './en';
 
-/** বাংলা dictionary — must match the English shape key-for-key. */
+/** বাংলা dictionary - must match the English shape key-for-key. */
 const bn: Dict = {
   common: {
     appName: 'Fundly',
     demoBadge: 'ডেমো',
-    demoBanner: 'প্রিভিউ মোড — এই সাইটের সব তথ্য নমুনা, শুধু আপনার ব্রাউজারে রাখা। কোনো তথ্য পাঠানো, টাকা কাটা বা সার্ভারে সংরক্ষণ করা হয় না।',
+    demoBanner: 'প্রিভিউ মোড - এই সাইটের সব তথ্য নমুনা, শুধু আপনার ব্রাউজারে রাখা। কোনো তথ্য পাঠানো, টাকা কাটা বা সার্ভারে সংরক্ষণ করা হয় না।',
     demoShort: 'নমুনা তথ্য',
     loading: 'লোড হচ্ছে…',
     save: 'পরিবর্তন সংরক্ষণ করুন',
@@ -98,7 +98,7 @@ const bn: Dict = {
     scoreNote: 'Readiness Score ≠ Loan Approval Score। চূড়ান্ত ঋণ সিদ্ধান্ত ব্যাংক বা NBFI-এর।',
     howTitle: 'কীভাবে কাজ করে',
     how: [
-      { title: 'Fundly মাস্টারক্লাসে শিখুন', body: 'Loan Lab-এ যোগ দিন — ব্যাংক কী দেখে তা নিয়ে একটি অফলাইন সেশন।' },
+      { title: 'Fundly মাস্টারক্লাসে শিখুন', body: 'Loan Lab-এ যোগ দিন - ব্যাংক কী দেখে তা নিয়ে একটি অফলাইন সেশন।' },
       { title: 'আপনার readiness যাচাই করুন', body: 'ব্যবসা, ব্যাংকিং ও compliance নিয়ে সাত ধাপের একটি চেক পূরণ করুন।' },
       { title: 'আপনার অবস্থান বুঝুন', body: 'নির্দেশক স্কোর, শক্তির জায়গা আর কী উন্নত করতে হবে তা দেখুন।' },
     ],
@@ -106,7 +106,7 @@ const bn: Dict = {
     howCta: 'Loan Lab দিয়ে শুরু করুন',
     featuredTitle: 'পরবর্তী মাস্টারক্লাস',
     featuredAll: 'সব মাস্টারক্লাস',
-    loanLabTitle: 'Loan Lab — মূল প্রোগ্রাম',
+    loanLabTitle: 'Loan Lab - মূল প্রোগ্রাম',
     loanLabBody: 'Bank readiness নিয়ে একটি অফলাইন মাস্টারক্লাস।',
     loanLabFeatures: ['বিশেষজ্ঞের নেতৃত্বে সেশন', 'কাজের checklist', 'সরাসরি প্রশ্নোত্তর', 'পরের ধাপের নির্দেশনা'],
     loanLabOutcome: 'ব্যাংক কী দেখে তা পরিষ্কার হবে, আর readiness-এর একটি দিক-নির্দেশনা পাবেন।',
@@ -123,7 +123,7 @@ const bn: Dict = {
       'আবেদনের আগে প্রস্তুত হতে চায় এমন ব্যবসা',
     ],
     whoNote: 'Loan Lab শুধু আন্তরিক ব্যবসায়ীদের জন্য।',
-    trustTitle: 'Fundly কী — আর কী নয়',
+    trustTitle: 'Fundly কী - আর কী নয়',
     trust: [
       { title: 'ঋণদাতা নয়', body: 'Fundly ঋণ দেয় না, লোনের আবেদনও নেয় না।' },
       { title: 'অনুমোদনের নিশ্চয়তা নেই', body: 'Readiness স্কোর কখনো ঋণের প্রতিশ্রুতি দেয় না।' },
@@ -131,7 +131,7 @@ const bn: Dict = {
     ],
     faqTitle: 'সচরাচর জিজ্ঞাসা',
     faq: [
-      { q: 'Fundly কি loan দেয়?', a: 'না। Fundly একটি financial readiness প্ল্যাটফর্ম — ব্যাংক, NBFI বা ঋণদাতা নয়। ঋণদাতার কাছে যাওয়ার আগে প্রস্তুত হতে সাহায্য করে।' },
+      { q: 'Fundly কি loan দেয়?', a: 'না। Fundly একটি financial readiness প্ল্যাটফর্ম - ব্যাংক, NBFI বা ঋণদাতা নয়। ঋণদাতার কাছে যাওয়ার আগে প্রস্তুত হতে সাহায্য করে।' },
       { q: 'Readiness Score কি loan-এর নিশ্চয়তা?', a: 'না। স্কোরটি নির্দেশক। চূড়ান্ত যোগ্যতা, underwriting ও ঋণের সিদ্ধান্ত আর্থিক প্রতিষ্ঠান নেয়।' },
       { q: 'Loan Lab-এ কী পাব?', a: 'বিশেষজ্ঞের নেতৃত্বে সেশন, কাজের checklist, সরাসরি প্রশ্নোত্তর এবং পরের ধাপের নির্দেশনা।' },
       { q: 'এখনই কি নিজে যাচাই করতে পারি?', a: 'হ্যাঁ। অ্যাকাউন্ট খুললেই যেকোনো সময় readiness চেক দিতে পারবেন। মাস্টারক্লাস বাধ্যতামূলক নয়।' },
@@ -143,7 +143,6 @@ const bn: Dict = {
     ctaSecondary: 'Fundly কীভাবে কাজ করে',
   },
   hero: {
-    eyebrow: 'আরও স্মার্ট ব্যবসায়িক financing readiness',
     titleA: 'আপনার ব্যবসাকে',
     titleB: 'formal finance-\u2060এর জন্য ready করুন',
     body: 'আপনার ব্যবসার readiness বুঝুন, গুরুত্বপূর্ণ ঘাটতিগুলো চিনুন, আর আরও তথ্যভিত্তিক financing আলোচনার দিকে পরের ধাপ নিন।',
@@ -151,7 +150,7 @@ const bn: Dict = {
     secondary: 'মাস্টারক্লাস দেখুন',
     trust: 'SME-দের financing readiness বুঝতে সাহায্য করার জন্য তৈরি।',
     illustration: 'Fundly readiness ড্যাশবোর্ডের একটি উদাহরণ। নমুনা মান, প্রকৃত মূল্যায়ন নয়।',
-    caption: 'উদাহরণমাত্র — প্রকৃত মূল্যায়ন নয়। Fundly loan দেয় না; প্রস্তুত হতে সাহায্য করে।',
+    caption: 'উদাহরণমাত্র - প্রকৃত মূল্যায়ন নয়। Fundly loan দেয় না; প্রস্তুত হতে সাহায্য করে।',
     phoneTitle: 'ব্যবসার Readiness',
     phoneSample: 'নমুনা ব্যবসা',
     phoneOutOf: '১০০-এর মধ্যে',
@@ -280,7 +279,7 @@ const bn: Dict = {
     forgotTitle: 'পাসওয়ার্ড রিসেট করুন',
     forgotBody: 'অ্যাকাউন্টের ইমেইল দিন, আমরা রিসেট লিংক প্রস্তুত করব।',
     forgotCta: 'রিসেট লিংক প্রস্তুত করুন',
-    forgotDone: 'লাইভ অ্যাপে রিসেট লিংক {email}-এ ইমেইল করা হয়। এই প্রিভিউতে কোনো ইমেইল যায় না — পরের স্ক্রিন দেখতে নিচে এগিয়ে যান।',
+    forgotDone: 'লাইভ অ্যাপে রিসেট লিংক {email}-এ ইমেইল করা হয়। এই প্রিভিউতে কোনো ইমেইল যায় না - পরের স্ক্রিন দেখতে নিচে এগিয়ে যান।',
     forgotContinue: 'রিসেট স্ক্রিন খুলুন',
     resetTitle: 'নতুন পাসওয়ার্ড দিন',
     resetBody: 'Fundly-তে আগে ব্যবহার করেননি এমন পাসওয়ার্ড দিন।',
@@ -568,7 +567,7 @@ const bn: Dict = {
       joined: 'যোগদান',
       intent: 'Financing-এর উদ্দেশ্য',
       score: 'সর্বশেষ স্কোর',
-      none: '—',
+      none: '-',
       detailInfo: 'ব্যবসার তথ্য',
       detailRegs: 'রেজিস্ট্রেশনের ইতিহাস',
       detailResult: 'যোগ্যতার ফলাফল',

@@ -13,7 +13,7 @@ export interface Column<T> {
 
 const hide = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' };
 
-/** Semantic table inside a contained horizontal scroller — the page itself never scrolls sideways. */
+/** Semantic table inside a contained horizontal scroller - the page itself never scrolls sideways. */
 export function DataTable<T>({
   columns,
   rows,

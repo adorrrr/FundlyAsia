@@ -1,5 +1,5 @@
 /**
- * SAMPLE DATA — fictional businesses, registrations and results used in preview mode.
+ * SAMPLE DATA - fictional businesses, registrations and results used in preview mode.
  * None of these records are real Fundly users.
  */
 import type {
@@ -159,7 +159,7 @@ const resRows: ResRow[] = [
   ['R-1003', 'sme-03', '2026-09-26', 83, [4], '', '50 lakh – 1 crore'],
   ['R-1004', 'sme-04', '2026-10-09', 48, [0, 3, 1], '', '5–10 lakh'],
   ['R-1005', 'sme-05', '2026-10-06', 36, [2, 0, 1], '', 'Below 5 lakh'],
-  ['R-1006', 'sme-06', '2026-10-02', 77, [1], '', '—'],
+  ['R-1006', 'sme-06', '2026-10-02', 77, [1], '', '-'],
   ['R-1007', 'sme-08', '2026-10-07', 59, [4, 0], '', '25–50 lakh'],
   ['R-1008', 'sme-09', '2026-10-03', 42, [0, 5, 3], '', '5–10 lakh'],
   ['R-1009', 'sme-11', '2026-10-10', 68, [1, 3], '', '25–50 lakh'],
@@ -177,5 +177,5 @@ export const sampleAudit: AuditEntry[] = [
   { id: 'a-4', smeId: 'sme-08', at: '2026-10-07T11:02:00', actor: 'Mizanur Rahman', field: 'Q-DB-03 Monthly repayment', from: '45,000', to: '38,000' },
 ];
 
-/** Accounts created over time — used only by the reports funnel. */
+/** Accounts created over time - used only by the reports funnel. */
 export const sampleSignupsWithoutProfile = 5;
