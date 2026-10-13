@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Clock } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { authService, ServiceError } from '@/services';
+import { saveSession } from '@/services/api/authApi';
 import { Button } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader } from '@/components/forms/AuthBits';
@@ -38,24 +39,27 @@ export default function VerifyEmailPage() {
     return () => clearTimeout(id);
   }, [left]);
 
-  // 5-minute expiry countdown
+  // 5-minute expiry countdown (runs in background without displaying countdown UI)
   useEffect(() => {
     if (expiryLeft <= 0) {
       setIsExpired(true);
+      setError(d.auth.otpExpiredNotice);
       if (!verifiedRef.current && targetEmail) {
         authService.cancelSignup(targetEmail);
+        saveSession(null);
       }
       return;
     }
     const id = setTimeout(() => setExpiryLeft((s) => s - 1), 1000);
     return () => clearTimeout(id);
-  }, [expiryLeft, targetEmail]);
+  }, [expiryLeft, targetEmail, d.auth.otpExpiredNotice]);
 
-  // Handle browser back button or page leave: cancel signup session so user must sign up again
+  // Handle browser back button or page leave: cancel signup session and clear session so user must sign up again
   useEffect(() => {
     const onPopState = () => {
       if (!verifiedRef.current && targetEmail) {
         authService.cancelSignup(targetEmail);
+        saveSession(null);
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -63,6 +67,7 @@ export default function VerifyEmailPage() {
       window.removeEventListener('popstate', onPopState);
       if (!verifiedRef.current && targetEmail) {
         authService.cancelSignup(targetEmail);
+        saveSession(null);
       }
     };
   }, [targetEmail]);
@@ -117,27 +122,14 @@ export default function VerifyEmailPage() {
   const handleBackToSignup = async () => {
     if (targetEmail) {
       await authService.cancelSignup(targetEmail);
+      saveSession(null);
     }
     nav('/signup', { replace: true });
   };
 
-  const mins = Math.floor(expiryLeft / 60);
-  const secs = expiryLeft % 60;
-  const timeFormatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-
   return (
     <>
       <AuthHeader title={d.auth.verifyTitle} body={t(d.auth.verifyBody, { email: targetEmail })} />
-
-      <div className="mb-4 flex items-center justify-between rounded-lg border border-line bg-surface-alt px-3.5 py-2.5 text-body">
-        <span className="flex items-center gap-2 text-meta text-slate">
-          <Clock className={`h-4 w-4 ${expiryLeft <= 60 ? 'text-bad animate-pulse' : 'text-slate'}`} />
-          {t(d.auth.otpExpiresIn, { time: timeFormatted })}
-        </span>
-        <span className={`text-meta font-semibold tabular-nums ${expiryLeft <= 60 ? 'text-bad' : 'text-ink'}`}>
-          {timeFormatted}
-        </span>
-      </div>
 
       {isExpired ? (
         <div className="flex flex-col gap-4">

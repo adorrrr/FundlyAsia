@@ -247,7 +247,7 @@ final class Auth
         $row = $st->fetch();
 
         if (!$row) {
-            throw new HttpException(400, 'otp_expired', 'No pending verification found. Please create your account again.');
+            throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
         }
 
         if ($row['expires_at'] < $now) {

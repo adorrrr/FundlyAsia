@@ -36,6 +36,7 @@ export function SiteHeader() {
     { to: '/#how', label: d.nav.howItWorks },
     { to: '/#faq', label: d.nav.faq },
   ];
+  const isAuthenticated = Boolean(user && (user.role === 'admin' || user.emailVerified));
   const home = user?.role === 'admin' ? '/admin' : '/dashboard';
 
   return (
@@ -67,7 +68,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto hidden items-center gap-2 lg:flex">
           <LanguageSwitcher />
-          {user ? (
+          {isAuthenticated ? (
             <Button to={home} size="sm" className="h-9 px-4">{d.nav.dashboard}</Button>
           ) : (
             <>
@@ -106,7 +107,7 @@ export function SiteHeader() {
             <div className="mt-2 flex items-center justify-between gap-3 border-t border-line px-1 pt-3">
               <LanguageSwitcher />
               <div className="flex gap-2">
-                {user ? (
+                {isAuthenticated ? (
                   <Button to={home} size="sm">{d.nav.dashboard}</Button>
                 ) : (
                   <>

@@ -61,7 +61,7 @@ setUnauthorizedHandler(() => {
 
 export function saveSession(user: SessionUser | null) {
   try {
-    if (user) {
+    if (user && (user.role === 'admin' || user.emailVerified)) {
       const str = JSON.stringify(user);
       sessionStorage.setItem(SESSION_STORAGE_KEY, str);
       localStorage.setItem(SESSION_STORAGE_KEY, str);
@@ -76,13 +76,20 @@ export function saveSession(user: SessionUser | null) {
   } catch {
     /* ignore */
   }
-  listeners.forEach((fn) => fn(user));
+  listeners.forEach((fn) => fn(user && (user.role === 'admin' || user.emailVerified) ? user : null));
 }
 
 export function loadSession(): SessionUser | null {
   try {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY) || localStorage.getItem(SESSION_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const u: SessionUser = JSON.parse(raw);
+    if (u && (u.role === 'admin' || u.emailVerified)) {
+      return u;
+    }
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    return null;
   } catch {
     return null;
   }

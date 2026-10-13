@@ -17,14 +17,19 @@ const AuthContext = createContext<AuthValue | null>(null);
  * sessionStorage; the live app will read an httpOnly session from the server.
  * Route guards here only shape navigation - they are not security.
  */
+const isVerifiedUser = (u: SessionUser | null): u is SessionUser => Boolean(u && (u.role === 'admin' || u.emailVerified));
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(() => authService.getSession());
+  const [user, setUser] = useState<SessionUser | null>(() => {
+    const s = authService.getSession();
+    return isVerifiedUser(s) ? s : null;
+  });
 
   useEffect(() => {
     // 1. Initial server session verification
     if (authService.syncSession) {
       authService.syncSession().then((u) => {
-        setUser(u);
+        setUser(isVerifiedUser(u) ? u : null);
       }).catch(() => {
         setUser(null);
       });
@@ -32,14 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 2. Cross-tab synchronization listener
     const unsub = onAuthChange((newUser) => {
-      setUser(newUser);
+      setUser(isVerifiedUser(newUser) ? newUser : null);
     });
 
     // 3. Tab visibility / window focus check
     const onFocusOrVisible = () => {
       if (document.visibilityState === 'visible' && authService.syncSession) {
         authService.syncSession().then((u) => {
-          setUser(u);
+          setUser(isVerifiedUser(u) ? u : null);
         }).catch(() => {
           setUser(null);
         });
@@ -57,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => {
     const u = authService.getSession();
-    setUser(u);
+    setUser(isVerifiedUser(u) ? u : null);
     return u;
   }, []);
 
