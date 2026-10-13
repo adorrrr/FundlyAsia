@@ -54,6 +54,8 @@
   ::selection { background: rgb(var(--brand-mark) / 0.22); }
   :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; border-radius: 6px; }
   .tnum { font-variant-numeric: tabular-nums; }
+  /* Grid items may shrink below their content width, so long or nowrap text never widens the page. */
+  .grid > * { min-width: 0; }
   img { max-width: 100%; }
 }
 

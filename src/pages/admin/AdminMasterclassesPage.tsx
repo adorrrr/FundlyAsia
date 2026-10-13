@@ -58,7 +58,7 @@ export default function AdminMasterclassesPage() {
               header: d.admin.regs.masterclass,
               cell: (m) => (
                 <div className="flex items-center gap-3">
-                  <MasterclassCover m={m} size="sm" className="hidden h-10 w-16 flex-none rounded-md sm:block" />
+                  <MasterclassCover m={m} size="sm" decorative sizes="72px" className="hidden h-10 w-[72px] flex-none rounded-md sm:block" />
                   <div className="min-w-0">
                     <p className="font-semibold">{l(m.title)}</p>
                     <p className="text-meta text-slate">{l(m.topic)}</p>

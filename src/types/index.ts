@@ -66,9 +66,17 @@ export interface Masterclass {
   registrationDeadline: ISODate | '';
   fee: number; // BDT, 0 = free
   status: MasterclassStatus;
+  /** '' when the speaker is not confirmed yet. */
   speakerId: string;
   cover?: string;
+  /** Responsive sources for the cover, e.g. "a.webp 640w, b.webp 1024w". */
+  coverSrcSet?: string;
+  coverAlt?: Localized;
+  /** Photographer credit for stock covers. */
+  coverCredit?: { name: string; url: string };
   coverTone: 'leaf' | 'sky' | 'sand';
+  /** Demo-only event, labelled in the UI. */
+  sample?: boolean;
 }
 
 export type RegistrationAvailability =

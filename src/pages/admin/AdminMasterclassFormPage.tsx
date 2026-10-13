@@ -186,7 +186,7 @@ export default function AdminMasterclassFormPage() {
             <TextField label={a.fee} type="number" min={0} inputMode="numeric" prefix="৳" value={String(v.fee)} onChange={(e) => set('fee', Number(e.target.value))} hint={a.feeHelp} error={err('fee')} />
           </fieldset>
           <div className="surface p-5 sm:p-6">
-            <ImageUpload label={a.cover} value={v.cover} onChange={(cover) => set('cover', cover)} />
+            <ImageUpload label={a.cover} variant="cover" value={v.cover} onChange={(cover) => setV((x) => ({ ...x, cover, coverSrcSet: undefined, coverCredit: undefined, coverAlt: undefined }))} />
           </div>
           <div className="flex flex-col gap-2">
             <Button type="submit" size="lg" loading={busy === 'save'}>{editing ? a.saveChanges : a.create}</Button>

@@ -108,7 +108,7 @@ export function Hero() {
           <motion.h1
             id="hero-title"
             {...rise(0.08, 18)}
-            className="text-[clamp(2.25rem,1.35rem+4.2vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink"
+            className="text-[clamp(2rem,1.2rem+4.4vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink"
           >
             <span className="block">{h.titleA}</span>
             <span className="block">{h.titleB}</span>
@@ -127,8 +127,8 @@ export function Hero() {
             </motion.div>
           </div>
 
-          <motion.p {...rise(0.36, 6)} className="mt-5 flex items-center gap-2 text-[0.8125rem] font-medium text-slate">
-            <ShieldCheck className="h-4 w-4 flex-none text-brand" aria-hidden />
+          <motion.p {...rise(0.36, 6)} className="mt-5 max-w-xs text-center text-[0.8125rem] font-medium text-slate sm:max-w-none">
+            <ShieldCheck className="-mt-0.5 mr-1.5 inline h-4 w-4 align-middle text-brand" aria-hidden />
             {h.trust}
           </motion.p>
         </div>

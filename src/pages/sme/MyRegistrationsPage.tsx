@@ -34,7 +34,7 @@ export default function MyRegistrationsPage() {
             return (
               <li key={r.id}>
                 <Link to={`/registrations/${r.id}`} className="group flex items-center gap-4 rounded-card bg-surface p-3 pr-4 shadow-hair transition-shadow hover:shadow-lift sm:p-4">
-                  {m && <MasterclassCover m={m} size="sm" className="hidden h-16 w-24 flex-none rounded-control sm:block" />}
+                  {m && <MasterclassCover m={m} size="sm" decorative sizes="112px" className="hidden aspect-[16/9] w-28 flex-none rounded-control sm:block" />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-semibold">{l(m?.title)}</p>
                     <p className="tnum mt-0.5 truncate text-meta text-slate">{r.id} · {formatDate(m?.date ?? '')} · {formatMoney(r.amount)}</p>

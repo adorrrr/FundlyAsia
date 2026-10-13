@@ -58,7 +58,8 @@ export function BarList({ data, caption, unit }: { data: BarDatum[]; caption: st
           );
         })}
       </ul>
-      <table className="sr-only">
+      <div className="sr-only">
+      <table>
         <caption>{caption}</caption>
         <tbody>
           {data.map((d) => (
@@ -66,6 +67,7 @@ export function BarList({ data, caption, unit }: { data: BarDatum[]; caption: st
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }

@@ -11,6 +11,7 @@ import { MasterclassMeta } from '@/components/masterclasses/MasterclassMeta';
 import { AvailabilityBadge } from '@/components/masterclasses/Availability';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Button } from '@/components/ui/Button';
+import { DemoBadge } from '@/components/ui/Badge';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
 import { Reveal } from '@/components/ui/Reveal';
 import { todayISO } from '@/utils/date';
@@ -67,10 +68,11 @@ export default function MasterclassesPage() {
           {featured && (
             <Reveal className="mt-10">
               <article className="grid overflow-hidden rounded-panel bg-surface shadow-float lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-                <MasterclassCover m={featured} size="lg" className="min-h-[220px] lg:min-h-[360px]" />
+                <MasterclassCover m={featured} size="lg" priority decorative sizes="(min-width: 1024px) 640px, 100vw" className="aspect-[16/9] w-full lg:aspect-auto lg:h-full lg:min-h-[360px]" />
                 <div className="flex flex-col p-6 sm:p-8">
-                  <div className="mb-3 flex flex-wrap gap-2"><AvailabilityBadge m={featured} avail={registrationAvailability(featured)} /></div>
-                  <h2 className="text-section font-semibold">{l(featured.title)}</h2>
+                  <div className="mb-3 flex flex-wrap gap-2"><AvailabilityBadge m={featured} avail={registrationAvailability(featured)} />{featured.sample && <DemoBadge />}</div>
+                  <p className="text-meta font-semibold text-brand">{l(featured.topic)}</p>
+                  <h2 className="mt-1 text-section font-semibold">{l(featured.title)}</h2>
                   <p className="mt-2 text-body text-slate">{l(featured.summary)}</p>
                   <MasterclassMeta m={featured} speaker={speakers.byId(featured.speakerId)} className="mt-5" />
                   <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">

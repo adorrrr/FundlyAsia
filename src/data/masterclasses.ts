@@ -1,39 +1,46 @@
 /**
- * SAMPLE DATA - demo masterclasses and speakers for preview mode only.
- * Loan Lab details (≈2 hours, 30 seats, 999 BDT) come from the current Fundly site.
- * Speaker names, dates and venues are placeholders until the Fundly team confirms them.
+ * MASTERCLASS DATA
+ *
+ * `launchMasterclasses` - content taken from the Fundly brief and the current Fundly site:
+ *   Loan Lab, 15 Oct 2026, 4:00 PM, Dhaka, ~2 hours, 30 seats, 999 BDT, registration open.
+ *   Speaker, exact venue and registration deadline are not confirmed, so they are left empty
+ *   and the UI shows "To be announced".
+ *
+ * `sampleMasterclasses` - DEMO-ONLY events used to preview other states (full, closed,
+ *   completed, draft). They are included only in development or when VITE_SAMPLE_EVENTS=true,
+ *   and are flagged `sample: true` so the UI labels them.
+ *
+ * Cover photos come from ./masterclassCovers (royalty-free, stored locally). Replace them
+ * with real event photography when the client supplies it.
  */
 import type { Masterclass, Speaker } from '@/types';
+import { covers } from './masterclassCovers';
 
+/** Spread a cover into a masterclass record. */
+const coverFields = (c: (typeof covers)[keyof typeof covers]) => ({ cover: c.src, coverSrcSet: c.srcSet, coverAlt: c.alt, coverCredit: { name: c.credit.name, url: c.credit.url } });
+
+export const INCLUDE_SAMPLE_EVENTS: boolean = import.meta.env.DEV || import.meta.env.VITE_SAMPLE_EVENTS === 'true';
+
+/** Placeholder speakers for demo events only - clearly named as placeholders. */
 export const sampleSpeakers: Speaker[] = [
   {
-    id: 'sp-1',
-    name: 'Farhana Kabir',
-    designation: 'SME credit advisor',
-    institution: 'Independent consultant',
+    id: 'sp-sample-1',
+    name: 'Sample speaker A',
+    designation: 'Placeholder - replace before launch',
+    institution: 'Not confirmed',
     bio: {
-      en: 'Farhana has spent over a decade reviewing SME loan files. She now helps owners organise their documents and records before they meet a lender.',
-      bn: 'ফারহানা এক দশকেরও বেশি সময় ধরে SME লোন ফাইল পর্যালোচনা করেছেন। এখন তিনি ঋণদাতার সাথে দেখা করার আগে মালিকদের কাগজপত্র ও হিসাব গোছাতে সাহায্য করেন।',
+      en: 'Placeholder profile for preview. Add the confirmed speaker’s bio in the admin panel.',
+      bn: 'প্রিভিউয়ের জন্য নমুনা প্রোফাইল। অ্যাডমিন প্যানেল থেকে নিশ্চিত বক্তার পরিচিতি যোগ করুন।',
     },
   },
   {
-    id: 'sp-2',
-    name: 'Tanvir Hasan',
-    designation: 'Chartered accountant',
-    institution: 'Independent practice',
+    id: 'sp-sample-2',
+    name: 'Sample speaker B',
+    designation: 'Placeholder - replace before launch',
+    institution: 'Not confirmed',
     bio: {
-      en: 'Tanvir works with small manufacturers and traders on bookkeeping, tax registration and the financial statements banks ask for.',
-      bn: 'তানভীর ছোট উৎপাদক ও ব্যবসায়ীদের সাথে হিসাবরক্ষণ, কর নিবন্ধন এবং ব্যাংক যে আর্থিক বিবরণী চায় তা নিয়ে কাজ করেন।',
-    },
-  },
-  {
-    id: 'sp-3',
-    name: 'Shirin Akter',
-    designation: 'Women’s enterprise mentor',
-    institution: 'Independent mentor',
-    bio: {
-      en: 'Shirin mentors women-led businesses moving from informal to formal finance, with a focus on first-time borrowers.',
-      bn: 'শিরিন অনানুষ্ঠানিক থেকে formal finance-এ যেতে চাওয়া নারী-নেতৃত্বাধীন ব্যবসাকে পরামর্শ দেন, বিশেষ করে প্রথমবার ঋণগ্রহীতাদের।',
+      en: 'Placeholder profile for preview. Add the confirmed speaker’s bio in the admin panel.',
+      bn: 'প্রিভিউয়ের জন্য নমুনা প্রোফাইল। অ্যাডমিন প্যানেল থেকে নিশ্চিত বক্তার পরিচিতি যোগ করুন।',
     },
   },
 ];
@@ -45,101 +52,105 @@ const loanLabLearn = [
   { en: 'A practical checklist and your own next step', bn: 'কাজের একটি checklist এবং আপনার নিজের পরের ধাপ' },
 ];
 
-export const sampleMasterclasses: Masterclass[] = [
+export const launchMasterclasses: Masterclass[] = [
   {
     id: 'mc-101',
-    slug: 'loan-lab-batch-01',
-    title: { en: 'Loan Lab - Batch 01', bn: 'Loan Lab - ব্যাচ ০১' },
+    slug: 'loan-lab-how-banks-evaluate',
+    title: {
+      en: 'Fundly Loan Lab: How Banks Evaluate Your Business Before Approving a Loan',
+      bn: 'Fundly Loan Lab: লোন অনুমোদনের আগে ব্যাংক কীভাবে আপনার ব্যবসা মূল্যায়ন করে',
+    },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
     summary: {
       en: 'An offline masterclass on what banks look for, with a practical checklist and live Q&A.',
       bn: 'ব্যাংক কী দেখে তা নিয়ে অফলাইন মাস্টারক্লাস - কাজের checklist ও সরাসরি প্রশ্নোত্তর সহ।',
     },
     description: {
-      en: 'Loan Lab is Fundly’s main programme. In about two hours, an expert walks you through how lenders assess a small business, which gaps most often stop an application, and what to fix first. You leave with a checklist and a clear direction for your readiness.',
-      bn: 'Loan Lab হলো Fundly-র মূল প্রোগ্রাম। প্রায় দুই ঘণ্টায় একজন বিশেষজ্ঞ দেখাবেন ঋণদাতারা কীভাবে ছোট ব্যবসা মূল্যায়ন করেন, কোন ঘাটতিগুলো সবচেয়ে বেশি আবেদন আটকে দেয়, আর আগে কী ঠিক করতে হবে। আপনি একটি checklist এবং readiness-এর পরিষ্কার দিক-নির্দেশনা নিয়ে ফিরবেন।',
+      en: 'Loan Lab is Fundly’s main programme: an offline masterclass on bank readiness. An expert-led session walks you through what banks look for, with a practical checklist, live Q&A and guidance on your next step. You leave with clarity on what lenders check and a direction for your readiness.',
+      bn: 'Loan Lab হলো Fundly-র মূল প্রোগ্রাম - bank readiness নিয়ে একটি অফলাইন মাস্টারক্লাস। বিশেষজ্ঞের নেতৃত্বে সেশনে দেখানো হবে ব্যাংক কী দেখে, সাথে থাকবে কাজের checklist, সরাসরি প্রশ্নোত্তর এবং পরের ধাপের নির্দেশনা। ঋণদাতারা কী যাচাই করেন তা পরিষ্কার হবে, আর readiness-এর একটি দিক-নির্দেশনা পাবেন।',
     },
     learn: loanLabLearn,
-    date: '2026-11-07',
-    startTime: '15:00',
-    endTime: '17:00',
-    venue: { en: 'Chattogram - venue to be confirmed', bn: 'চট্টগ্রাম - স্থান পরে নিশ্চিত করা হবে' },
+    date: '2026-10-15',
+    startTime: '16:00',
+    endTime: '18:00',
+    venue: { en: 'Dhaka - venue to be announced', bn: 'ঢাকা - স্থান পরে জানানো হবে' },
     capacity: 30,
-    seatsTaken: 18,
-    registrationDeadline: '2026-11-04',
+    seatsTaken: 0,
+    registrationDeadline: '',
     fee: 999,
     status: 'registration_open',
-    speakerId: 'sp-1',
+    speakerId: '',
     coverTone: 'leaf',
+    ...coverFields(covers.loanLab),
   },
+];
+
+const sampleNote = { en: 'Sample event for preview only - not scheduled.', bn: 'শুধু প্রিভিউয়ের জন্য নমুনা ইভেন্ট - নির্ধারিত নয়।' };
+
+export const sampleMasterclasses: Masterclass[] = [
   {
     id: 'mc-102',
-    slug: 'bookkeeping-banks-trust',
+    slug: 'sample-bookkeeping',
+    sample: true,
     title: { en: 'Bookkeeping that banks trust', bn: 'যে হিসাব ব্যাংক বিশ্বাস করে' },
     topic: { en: 'Financial records', bn: 'আর্থিক রেকর্ড' },
-    summary: {
-      en: 'Set up simple, consistent records that make your sales and costs easy for a lender to read.',
-      bn: 'সহজ ও নিয়মিত হিসাব রাখুন, যাতে ঋণদাতা আপনার বিক্রি ও খরচ সহজে বুঝতে পারেন।',
-    },
+    summary: sampleNote,
     description: {
-      en: 'A hands-on session for owners who keep records in notebooks or not at all. Learn a simple monthly routine, which statements to prepare, and how to keep business and personal money apart.',
-      bn: 'যারা খাতায় হিসাব রাখেন বা একেবারেই রাখেন না, তাদের জন্য হাতে-কলমে সেশন। একটি সহজ মাসিক রুটিন, কোন বিবরণী প্রস্তুত করবেন, এবং ব্যবসা ও ব্যক্তিগত টাকা কীভাবে আলাদা রাখবেন তা শিখুন।',
+      en: 'Sample event used to preview a full session. Set up simple, consistent records that make sales and costs easy for a lender to read.',
+      bn: 'পূর্ণ সেশন দেখানোর জন্য নমুনা ইভেন্ট। সহজ ও নিয়মিত হিসাব রাখুন, যাতে ঋণদাতা বিক্রি ও খরচ সহজে বুঝতে পারেন।',
     },
     learn: [
       { en: 'A monthly bookkeeping routine you can keep', bn: 'একটি মাসিক হিসাবরক্ষণ রুটিন যা আপনি মেনে চলতে পারবেন' },
-      { en: 'Which statements a lender expects to see', bn: 'ঋণদাতা কোন বিবরণী দেখতে চান' },
       { en: 'Separating business and personal money', bn: 'ব্যবসা ও ব্যক্তিগত টাকা আলাদা রাখা' },
     ],
     date: '2026-11-21',
     startTime: '10:00',
     endTime: '12:30',
-    venue: { en: 'Dhaka - venue to be confirmed', bn: 'ঢাকা - স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'To be announced', bn: 'পরে জানানো হবে' },
     capacity: 25,
     seatsTaken: 25,
     registrationDeadline: '2026-11-18',
     fee: 999,
     status: 'registration_open',
-    speakerId: 'sp-2',
+    speakerId: 'sp-sample-2',
     coverTone: 'sky',
+    ...coverFields(covers.bookkeeping),
   },
   {
     id: 'mc-103',
-    slug: 'loan-lab-batch-02',
-    title: { en: 'Loan Lab - Batch 02', bn: 'Loan Lab - ব্যাচ ০২' },
+    slug: 'sample-loan-lab-batch-02',
+    sample: true,
+    title: { en: 'Loan Lab - second batch', bn: 'Loan Lab - দ্বিতীয় ব্যাচ' },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
-    summary: {
-      en: 'The second Loan Lab batch, for owners who missed Batch 01.',
-      bn: 'দ্বিতীয় Loan Lab ব্যাচ - যারা ব্যাচ ০১ মিস করেছেন তাদের জন্য।',
-    },
+    summary: sampleNote,
     description: {
-      en: 'The same Loan Lab programme as Batch 01: how lenders assess small businesses, the gaps that stop applications, and a practical checklist to take home.',
-      bn: 'ব্যাচ ০১-এর মতোই Loan Lab প্রোগ্রাম: ঋণদাতারা কীভাবে ছোট ব্যবসা মূল্যায়ন করেন, কোন ঘাটতি আবেদন আটকে দেয়, আর বাড়ি নিয়ে যাওয়ার মতো একটি checklist।',
+      en: 'Sample event used to preview an open session with seats remaining.',
+      bn: 'আসন বাকি থাকা একটি খোলা সেশন দেখানোর জন্য নমুনা ইভেন্ট।',
     },
     learn: loanLabLearn,
     date: '2026-12-05',
-    startTime: '15:00',
-    endTime: '17:00',
-    venue: { en: 'Dhaka - venue to be confirmed', bn: 'ঢাকা - স্থান পরে নিশ্চিত করা হবে' },
+    startTime: '16:00',
+    endTime: '18:00',
+    venue: { en: 'To be announced', bn: 'পরে জানানো হবে' },
     capacity: 30,
-    seatsTaken: 4,
+    seatsTaken: 0,
     registrationDeadline: '2026-12-01',
     fee: 999,
     status: 'registration_open',
-    speakerId: 'sp-1',
-    coverTone: 'sand',
+    speakerId: 'sp-sample-1',
+    coverTone: 'sky',
+    ...coverFields(covers.loanLab02),
   },
   {
     id: 'mc-104',
-    slug: 'trade-licence-tin-bin',
+    slug: 'sample-trade-licence-tin-bin',
+    sample: true,
     title: { en: 'Trade licence, TIN and BIN', bn: 'ট্রেড লাইসেন্স, TIN ও BIN' },
     topic: { en: 'Compliance basics', bn: 'Compliance-এর মূল বিষয়' },
-    summary: {
-      en: 'A short free session on the registrations most lenders check first.',
-      bn: 'বেশিরভাগ ঋণদাতা প্রথমেই যে নিবন্ধনগুলো দেখেন, তা নিয়ে ছোট বিনামূল্যের সেশন।',
-    },
+    summary: sampleNote,
     description: {
-      en: 'What each registration is, who needs it, and how to keep it current. Bring your questions.',
-      bn: 'প্রতিটি নিবন্ধন কী, কার দরকার, এবং কীভাবে হালনাগাদ রাখবেন। আপনার প্রশ্ন নিয়ে আসুন।',
+      en: 'Sample event used to preview a free session whose registration has closed.',
+      bn: 'রেজিস্ট্রেশন বন্ধ হয়ে যাওয়া একটি বিনামূল্যের সেশন দেখানোর জন্য নমুনা ইভেন্ট।',
     },
     learn: [
       { en: 'When you need a TIN and when you need a BIN', bn: 'কখন TIN আর কখন BIN দরকার' },
@@ -148,54 +159,46 @@ export const sampleMasterclasses: Masterclass[] = [
     date: '2026-10-25',
     startTime: '11:00',
     endTime: '12:00',
-    venue: { en: 'Chattogram - venue to be confirmed', bn: 'চট্টগ্রাম - স্থান পরে নিশ্চিত করা হবে' },
+    venue: { en: 'To be announced', bn: 'পরে জানানো হবে' },
     capacity: 40,
-    seatsTaken: 31,
+    seatsTaken: 0,
     registrationDeadline: '2026-10-20',
     fee: 0,
     status: 'registration_closed',
-    speakerId: 'sp-2',
-    coverTone: 'sky',
+    speakerId: 'sp-sample-2',
+    coverTone: 'leaf',
+    ...coverFields(covers.compliance),
   },
   {
     id: 'mc-100',
-    slug: 'loan-lab-pilot',
-    title: { en: 'Loan Lab - Pilot', bn: 'Loan Lab - পাইলট' },
+    slug: 'sample-loan-lab-pilot',
+    sample: true,
+    title: { en: 'Loan Lab - pilot session', bn: 'Loan Lab - পাইলট সেশন' },
     topic: { en: 'Bank readiness for SMEs', bn: 'SME-দের bank readiness' },
-    summary: {
-      en: 'The pilot session that shaped the Loan Lab programme.',
-      bn: 'যে পাইলট সেশন থেকে Loan Lab প্রোগ্রামের রূপ এসেছে।',
-    },
-    description: {
-      en: 'Our first Loan Lab session, run with a small group of owners to test the format.',
-      bn: 'ফরম্যাট যাচাই করতে অল্প কয়েকজন মালিককে নিয়ে আমাদের প্রথম Loan Lab সেশন।',
-    },
+    summary: sampleNote,
+    description: { en: 'Sample event used to preview a completed session.', bn: 'সম্পন্ন একটি সেশন দেখানোর জন্য নমুনা ইভেন্ট।' },
     learn: loanLabLearn.slice(0, 2),
     date: '2026-09-20',
     startTime: '15:00',
     endTime: '17:00',
-    venue: { en: 'Chattogram', bn: 'চট্টগ্রাম' },
+    venue: { en: 'To be announced', bn: 'পরে জানানো হবে' },
     capacity: 20,
-    seatsTaken: 17,
+    seatsTaken: 0,
     registrationDeadline: '2026-09-16',
     fee: 0,
     status: 'completed',
-    speakerId: 'sp-1',
+    speakerId: 'sp-sample-1',
     coverTone: 'leaf',
+    ...coverFields(covers.pilot),
   },
   {
     id: 'mc-105',
-    slug: 'women-entrepreneurs-formal-finance',
+    slug: 'sample-women-entrepreneurs',
+    sample: true,
     title: { en: 'Women entrepreneurs and formal finance', bn: 'নারী উদ্যোক্তা ও formal finance' },
     topic: { en: 'First-time borrowing', bn: 'প্রথমবার ঋণ নেওয়া' },
-    summary: {
-      en: 'Preparing a first application as a woman-owned business.',
-      bn: 'নারী মালিকানাধীন ব্যবসা হিসেবে প্রথম আবেদনের প্রস্তুতি।',
-    },
-    description: {
-      en: 'Draft - content to be finalised with the speaker.',
-      bn: 'খসড়া - বক্তার সাথে বিষয়বস্তু চূড়ান্ত করা হবে।',
-    },
+    summary: sampleNote,
+    description: { en: 'Draft - content to be finalised.', bn: 'খসড়া - বিষয়বস্তু চূড়ান্ত করা হবে।' },
     learn: [{ en: 'To be finalised', bn: 'চূড়ান্ত করা হবে' }],
     date: '',
     startTime: '',
@@ -206,7 +209,11 @@ export const sampleMasterclasses: Masterclass[] = [
     registrationDeadline: '',
     fee: 999,
     status: 'draft',
-    speakerId: 'sp-3',
+    speakerId: '',
     coverTone: 'sand',
+    ...coverFields(covers.womenEntrepreneurs),
   },
 ];
+
+export const allMasterclasses: Masterclass[] = INCLUDE_SAMPLE_EVENTS ? [...launchMasterclasses, ...sampleMasterclasses] : launchMasterclasses;
+export const allSpeakers: Speaker[] = INCLUDE_SAMPLE_EVENTS ? sampleSpeakers : [];

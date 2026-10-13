@@ -2,4 +2,5 @@
 interface ImportMetaEnv {
   readonly VITE_DATA_MODE?: 'mock' | 'api';
   readonly VITE_API_BASE_URL?: string;
+  readonly VITE_SAMPLE_EVENTS?: 'true' | 'false';
 }

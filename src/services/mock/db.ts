@@ -6,7 +6,7 @@
  * preview. It never stores passwords, OTPs or payment credentials, and it is
  * NOT a security boundary - real authorisation must live on the server.
  */
-import { sampleMasterclasses, sampleSpeakers } from '@/data/masterclasses';
+import { allMasterclasses, allSpeakers, INCLUDE_SAMPLE_EVENTS } from '@/data/masterclasses';
 import { sampleQuestions } from '@/data/questions';
 import { initialScoringAreas } from '@/data/scoring';
 import {
@@ -54,8 +54,8 @@ export interface DbState {
   audit: AuditEntry[];
 }
 
-const STORAGE_KEY = 'fundly.demo.v1';
-const VERSION = 1;
+const STORAGE_KEY = 'fundly.demo.v2';
+const VERSION = 2;
 
 function seed(): DbState {
   const demoAssessment: Assessment = {
@@ -83,14 +83,24 @@ function seed(): DbState {
     };
   });
 
+  // Sample registrations only exist alongside the sample events (development / VITE_SAMPLE_EVENTS).
+  // Without them, real events start with no seats taken, so no participant count is invented.
+  const classIds = new Set(allMasterclasses.map((m) => m.id));
+  const registrations = INCLUDE_SAMPLE_EVENTS ? structuredClone(sampleRegistrations).filter((r) => classIds.has(r.masterclassId)) : [];
+  // Seat counts are derived from the registrations that exist, never hard-coded.
+  const masterclasses = structuredClone(allMasterclasses).map((m) => ({
+    ...m,
+    seatsTaken: m.seatsTaken || registrations.filter((r) => r.masterclassId === m.id && r.status !== 'cancelled').length,
+  }));
+
   return {
     version: VERSION,
     users: [{ id: DEMO_USER_ID, name: demoProfile.ownerName, email: demoProfile.email, emailVerified: true }],
     profiles: [demoProfile, ...sampleSmes.slice(1).map((s) => s.profile)],
     smes: sampleSmes.map((s) => ({ ...s, latestBand: s.latestScore != null ? bandFor(s.latestScore) : undefined })),
-    masterclasses: structuredClone(sampleMasterclasses),
-    speakers: structuredClone(sampleSpeakers),
-    registrations: structuredClone(sampleRegistrations),
+    masterclasses,
+    speakers: structuredClone(allSpeakers),
+    registrations,
     assessments: [demoAssessment],
     results,
     questions: structuredClone(sampleQuestions),

@@ -36,6 +36,13 @@ For cPanel:
 
 **Important:** this build is a frontend preview, not a production service. Authentication (including admin login), data, payments, and scoring are mocked in the browser. Do not use it to store real customer data or rely on its admin routes for access control. A real launch requires a backend with server-side authentication, authorization, persistence, and payment integration.
 
+## Masterclass events and photos
+- **Live events** (`launchMasterclasses` in `src/data/masterclasses.ts`): Fundly Loan Lab, 15 October 2026, 4:00 PM, Dhaka, 999 BDT, 30 seats, taken from the project brief. Speaker, exact venue and registration deadline are not confirmed, so the site shows "To be announced". Confirm these with the client before launch.
+- **Sample events** (`sampleMasterclasses`) show the other states (full, closed, completed, draft). They appear only in `npm run dev`, or in a build made with `VITE_SAMPLE_EVENTS=true`, and every one carries a "Demo" badge. A normal `npm run build` shows the live events only, with no sample seat counts.
+- **Cover photos** are royalty-free Unsplash photos (Unsplash License), stored locally in `src/assets/masterclasses/` as WebP at 640, 1024 and 1600 px, and served with `srcset`. Credits are in `src/data/masterclassCovers.ts` and shown under the photo on each detail page. They are representative photos, not pictures of Fundly events; swap in real Loan Lab photos when available.
+- If a cover is missing or fails to load, the branded Fundly cover is shown instead of a broken image.
+- Covers uploaded in the admin form preview in the browser only. Saving them permanently needs backend storage.
+
 ## Stack
 React 18 + Vite 6 + TypeScript, Tailwind CSS 3, React Router 6 (lazy-loaded routes), Framer Motion 11, Lucide icons.
 
@@ -73,7 +80,7 @@ src/
 
 **Admin:** dashboard (6 KPIs and 2 charts, all labelled as sample), SMEs (search, filters, CSV) and SME detail (profile, registration history, result, answer-change audit timeline), masterclasses (filters, inline status change), create/edit form (bilingual fields, schedule validation, speaker picker or inline new speaker, cover and photo upload with preview and validation, learning points), speakers, registrations (refund queue, attendance, payment correction with a required reason, CSV), question bank (create, edit, preview, active toggle, weight and rule metadata), scoring rules (six weights, must total 100%, reset, bands), results (search, band filter, CSV), and reports (date range, registrations by payment status, checks by band, registration → assessment funnel, CSV each).
 
-**Everywhere:** English/বাংলা switch (persisted), responsive from 320px to wide desktop with no page-level horizontal scroll (checked at 390, 820, 1440 and 1680px), keyboard focus states, accessible dialogs (focus trap, Esc, focus return), skip link, aria-live toasts, and lazy-loaded routes. `tsc`, `eslint --max-warnings=0` and `vite build` all pass.
+**Everywhere:** English/বাংলা switch (persisted), responsive from 320px to wide desktop with no page-level horizontal scroll (checked at 320, 375, 390, 768, 1024, 1280 and 1440px), keyboard focus states, accessible dialogs (focus trap, Esc, focus return), skip link, aria-live toasts, and lazy-loaded routes. `tsc`, `eslint --max-warnings=0` and `vite build` all pass.
 
 ## What is mocked (and labelled on screen)
 - **All data** (`src/data/*`, `src/services/mock/db.ts`). A "Sample data" chip is always visible, and demo records carry a "Demo" badge.

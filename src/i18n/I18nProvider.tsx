@@ -69,8 +69,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       formatTime: (hhmm) => {
         if (!hhmm) return dictionaries[lang].common.tba;
         const [h, m] = hhmm.split(':').map(Number);
+        if (lang === 'bn') {
+          // Bangla reads the part of day as a word: "বিকাল ৪:০০", not "৪:০০ PM".
+          const part = h >= 4 && h < 12 ? 'সকাল' : h >= 12 && h < 15 ? 'দুপুর' : h >= 15 && h < 18 ? 'বিকাল' : h >= 18 && h < 20 ? 'সন্ধ্যা' : 'রাত';
+          const h12 = h % 12 === 0 ? 12 : h % 12;
+          return `${part} ${formatNumber(h12)}:${new Intl.NumberFormat(locale, { minimumIntegerDigits: 2 }).format(m)}`;
+        }
         const d = new Date(2000, 0, 1, h, m);
-        return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(d);
+        return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
       },
       formatNumber,
       formatMoney: (n) => (n === 0 ? dictionaries[lang].common.free : `${formatNumber(n)} ${dictionaries[lang].common.bdt}`),
