@@ -24,6 +24,16 @@ final class SpeakerRepository
         return (bool) $st->fetchColumn();
     }
 
+    public static function delete(int $id): void
+    {
+        $pdo = Db::pdo();
+        $st = $pdo->prepare('DELETE FROM speakers WHERE id = ?');
+        $st->execute([$id]);
+        if ($st->rowCount() === 0) {
+            throw new HttpException(404, 'not_found', 'Speaker not found.');
+        }
+    }
+
     /** @param array<string,mixed> $v @return array<string,mixed> */
     public static function save(?int $id, array $v): array
     {

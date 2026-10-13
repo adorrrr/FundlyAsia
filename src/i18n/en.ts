@@ -647,6 +647,11 @@ const en = {
       sessions: '{n} sessions',
       saved: 'Speaker saved',
       empty: 'No speakers yet',
+      delete: 'Delete',
+      deleteTitle: 'Delete this speaker?',
+      deleteBody: 'Are you sure you want to delete “{name}”? Any associated masterclasses will no longer have a speaker assigned.',
+      deleted: 'Speaker deleted',
+      deleteFailed: 'The speaker could not be deleted. Please try again.',
     },
     regs: {
       title: 'Registrations',

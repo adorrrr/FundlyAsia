@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -26,18 +26,42 @@ export default function AdminSpeakersPage() {
   const speakers = useAsync(() => masterclassService.listSpeakers(), []);
   const classes = useAsync(() => masterclassService.listAll(), []);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [toDelete, setToDelete] = useState<Speaker | null>(null);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const save = async () => {
     if (!draft) return;
     if (isBlank(draft.name)) return setError(d.validation.required);
     setBusy(true);
-    await masterclassService.saveSpeaker(draft);
-    setBusy(false);
-    setDraft(null);
-    toast(a.saved);
-    speakers.reload();
+    try {
+      await masterclassService.saveSpeaker(draft);
+      setDraft(null);
+      toast(a.saved);
+      speakers.reload();
+      classes.reload();
+    } catch {
+      toast(d.common.errorTitle);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await masterclassService.removeSpeaker(toDelete.id);
+      setToDelete(null);
+      toast(a.deleted);
+      speakers.reload();
+      classes.reload();
+    } catch {
+      toast(a.deleteFailed);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -60,9 +84,14 @@ export default function AdminSpeakersPage() {
                   <p className="text-meta text-slate">{s.designation}</p>
                   <p className="text-meta text-slate">{s.institution}</p>
                 </div>
-                <Button size="sm" variant="ghost" aria-label={`${d.common.edit} ${s.name}`} icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => { setError(undefined); setDraft({ ...s }); }}>
-                  <span className="sr-only">{d.common.edit}</span>
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" aria-label={`${d.common.edit} ${s.name}`} icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => { setError(undefined); setDraft({ ...s }); }}>
+                    <span className="sr-only">{d.common.edit}</span>
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-bad hover:bg-bad-soft" aria-label={`${a.delete} ${s.name}`} icon={<Trash2 className="h-3.5 w-3.5" />} onClick={() => setToDelete(s)}>
+                    <span className="sr-only">{a.delete}</span>
+                  </Button>
+                </div>
               </div>
               <p className="mt-4 line-clamp-3 text-body text-slate">{l(s.bio)}</p>
               <p className="mt-auto pt-4 text-meta font-semibold">{t(a.sessions, { n: formatNumber((classes.data ?? []).filter((c) => c.speakerId === s.id).length) })}</p>
@@ -94,6 +123,20 @@ export default function AdminSpeakersPage() {
           </div>
         )}
       </Dialog>
+
+      <Dialog
+        open={!!toDelete}
+        onClose={() => !deleting && setToDelete(null)}
+        title={a.deleteTitle}
+        description={toDelete ? a.deleteBody.replace('{name}', toDelete.name) : undefined}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" data-autofocus onClick={() => setToDelete(null)} disabled={deleting}>{d.common.cancel}</Button>
+            <Button variant="danger" onClick={confirmDelete} loading={deleting}>{a.delete}</Button>
+          </>
+        }
+      />
     </div>
   );
 }

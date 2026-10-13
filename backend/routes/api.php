@@ -72,5 +72,6 @@ return static function (Router $r): void {
     $r->add('DELETE', '/admin/masterclasses/{id}', [MasterclassController::class, 'delete']);
     $r->add('POST', '/admin/speakers', [SpeakerController::class, 'create']);
     $r->add('PUT', '/admin/speakers/{id}', [SpeakerController::class, 'update']);
+    $r->add('DELETE', '/admin/speakers/{id}', [SpeakerController::class, 'delete']);
     $r->add('POST', '/admin/uploads', [UploadController::class, 'store']);
 };

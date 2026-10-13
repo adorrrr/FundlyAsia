@@ -61,4 +61,5 @@ export const apiMasterclassService: MasterclassService = {
         : apiRequest<Speaker>('/admin/speakers', { method: 'POST', json }),
     );
   },
+  removeSpeaker: (id: string) => guard(() => apiRequest<void>(`/admin/speakers/${encodeURIComponent(id)}`, { method: 'DELETE' })),
 };

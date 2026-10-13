@@ -262,6 +262,18 @@ final class SpeakerController
         Auth::audit((int) $admin['id'], 'speaker.update', 'speaker', $id, $req->ip());
         Response::json($s);
     }
+
+    public static function delete(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        if (!Validator::isId($req->params['id'])) {
+            throw new HttpException(404, 'not_found', 'Speaker not found.');
+        }
+        $id = (int) $req->params['id'];
+        SpeakerRepository::delete($id);
+        Auth::audit((int) $admin['id'], 'speaker.delete', 'speaker', $id, $req->ip());
+        Response::noContent();
+    }
 }
 
 final class UploadController

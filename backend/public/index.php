@@ -7,11 +7,29 @@ use Fundly\Support\Request;
 use Fundly\Support\Response;
 use Fundly\Support\Router;
 
-// Let the PHP dev server serve uploaded images directly.
+// Let the PHP dev server serve uploaded images directly (both /uploads and /api/uploads).
 if (PHP_SAPI === 'cli-server') {
-    $file = __DIR__ . preg_replace('#^/api(?=/)#', '', (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+    $rawPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    $stripped = preg_replace('#^/api(?=/)#', '', $rawPath);
+    $file = __DIR__ . $stripped;
     if (is_file($file) && !str_ends_with($file, '.php')) {
-        return false;
+        if ($rawPath === $stripped) {
+            return false;
+        }
+        $mimes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+        ];
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        header('Content-Type: ' . ($mimes[$ext] ?? 'application/octet-stream'));
+        header('Content-Length: ' . (string) filesize($file));
+        header('Access-Control-Allow-Origin: *');
+        readfile($file);
+        exit;
     }
 }
 

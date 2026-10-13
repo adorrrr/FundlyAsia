@@ -92,10 +92,15 @@ check('update', $c === 200 && $j['title']['en'] === 'Test Session Renamed' && $j
 [$c] = call('PATCH', "$base/admin/masterclasses/$idA/status", ['status' => 'registration_closed'], $jar);
 check('set status -> 204', $c === 204, (string) $c);
 
-[$c, $j] = call('POST', "$base/admin/speakers", ['name' => 'Spk', 'designation' => 'D', 'institution' => 'I', 'bio' => ['en' => 'b', 'bn' => '']], $jar);
-check('create speaker', $c === 201 && isset($j['id']), (string) $c);
+[$c, $spk] = call('POST', "$base/admin/speakers", ['name' => 'Spk To Delete', 'designation' => 'D', 'institution' => 'I', 'bio' => ['en' => 'b', 'bn' => '']], $jar);
+check('create speaker', $c === 201 && isset($spk['id']), (string) $c);
+$spkId = $spk['id'] ?? '0';
 [$c, $j] = call('GET', "$base/speakers", null, $anon);
 check('list speakers', $c === 200 && count($j) >= $initialSpkCount + 1, (string) $c);
+[$c] = call('DELETE', "$base/admin/speakers/$spkId", null, $jar);
+check('delete speaker -> 204', $c === 204, (string) $c);
+[$c] = call('DELETE', "$base/admin/speakers/$spkId", null, $jar);
+check('second delete speaker -> 404', $c === 404, (string) $c);
 
 
 [$c] = call('DELETE', "$base/admin/masterclasses/abc", null, $jar);

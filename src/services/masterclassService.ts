@@ -15,6 +15,7 @@ export interface MasterclassService {
   remove(id: string): Promise<void>;
   listSpeakers(): Promise<Speaker[]>;
   saveSpeaker(speaker: Omit<Speaker, 'id'> & { id?: string }): Promise<Speaker>;
+  removeSpeaker(id: string): Promise<void>;
 }
 
 const byDate = (a: Masterclass, b: Masterclass) => (a.date || '9999').localeCompare(b.date || '9999');
@@ -85,6 +86,16 @@ export const mockMasterclassService: MasterclassService = {
       }
     });
     return structuredClone(out);
+  },
+  async removeSpeaker(id) {
+    await delay(300);
+    db.update((s) => {
+      const i = s.speakers.findIndex((x) => x.id === id);
+      if (i >= 0) s.speakers.splice(i, 1);
+      s.masterclasses.forEach((m) => {
+        if (m.speakerId === id) m.speakerId = '';
+      });
+    });
   },
 };
 
