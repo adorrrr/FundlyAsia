@@ -3,7 +3,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
-import { businessService } from '@/services';
+import { businessService, ServiceError } from '@/services';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorState, LoadingBlock } from '@/components/ui/Feedback';
 import { ProfileForm, emptyProfile } from '@/components/forms/ProfileForm';
@@ -35,13 +35,26 @@ export default function BusinessProfilePage() {
           submitLabel={d.common.save}
           onCancel={() => nav('/dashboard')}
           onSubmit={async (v) => {
-            const saved = await businessService.saveProfile(user!.id, v);
-            setData(saved);
-            refresh();
-            toast(d.common.saved);
+            try {
+              const saved = await businessService.saveProfile(user!.id, v);
+              setData(saved);
+              refresh();
+              toast(d.common.saved);
+              nav('/dashboard');
+            } catch (err) {
+              if (err instanceof ServiceError && err.code === 'invalid_credentials') {
+                toast('Session expired. Please sign in again.', 'error');
+                nav('/auth/login');
+              } else if (err instanceof ServiceError && err.code === 'validation') {
+                toast(d.validation.fixErrors, 'error');
+              } else {
+                toast(d.validation.fixErrors, 'error');
+              }
+            }
           }}
         />
       )}
     </div>
   );
 }
+

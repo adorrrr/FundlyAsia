@@ -5,7 +5,7 @@ import type { AuthService } from '../authService';
 
 const SESSION_KEY = 'fundly.api.session';
 
-function saveSession(user: SessionUser | null) {
+export function saveSession(user: SessionUser | null) {
   try {
     if (user) sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
     else sessionStorage.removeItem(SESSION_KEY);
@@ -14,7 +14,7 @@ function saveSession(user: SessionUser | null) {
   }
 }
 
-function loadSession(): SessionUser | null {
+export function loadSession(): SessionUser | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
@@ -23,10 +23,32 @@ function loadSession(): SessionUser | null {
   }
 }
 
+export function updateSessionUser(patch: Partial<SessionUser>): SessionUser | null {
+  const current = loadSession();
+  if (current) {
+    const updated = { ...current, ...patch };
+    saveSession(updated);
+    return updated;
+  }
+  return null;
+}
+
 export const apiAuthService: AuthService = {
   getSession() {
     return loadSession();
   },
+
+  async syncSession() {
+    try {
+      const me = await apiRequest<SessionUser>('/auth/me');
+      saveSession(me);
+      return me;
+    } catch {
+      // If server session is not active, return whatever is stored or null
+      return loadSession();
+    }
+  },
+
 
   async login(email, password) {
     try {

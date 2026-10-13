@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authService } from '@/services';
 import type { SessionUser } from '@/types';
 
@@ -18,11 +18,21 @@ const AuthContext = createContext<AuthValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() => authService.getSession());
+
+  useEffect(() => {
+    if (authService.syncSession) {
+      authService.syncSession().then((u) => {
+        if (u) setUser(u);
+      }).catch(() => undefined);
+    }
+  }, []);
+
   const refresh = useCallback(() => {
     const u = authService.getSession();
     setUser(u);
     return u;
   }, []);
+
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);

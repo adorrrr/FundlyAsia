@@ -5,7 +5,9 @@ import { ServiceError } from './errors';
 
 export interface AuthService {
   getSession(): SessionUser | null;
+  syncSession?(): Promise<SessionUser | null>;
   login(email: string, password: string): Promise<SessionUser>;
+
   signup(input: { name: string; email: string; password: string }): Promise<SessionUser>;
   verifyEmail(email: string, code: string): Promise<SessionUser>;
   resendOtp(email: string): Promise<void>;
