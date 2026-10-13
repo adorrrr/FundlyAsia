@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Logo } from '@/components/ui/Logo';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { DemoPill } from '@/components/navigation/DemoPill';
 import { useI18n } from '@/i18n/I18nProvider';
 import { AnimatedOutlet } from './PageTransition';
 import { SkipLink } from './SkipLink';
@@ -45,7 +44,6 @@ export default function AuthLayout() {
           <p className="mt-8 max-w-sm text-section font-semibold text-ink">{d.home.heroNote}</p>
         </div>
       </aside>
-      <DemoPill />
     </div>
   );
 }

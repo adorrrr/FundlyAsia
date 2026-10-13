@@ -1,6 +1,5 @@
 import { SiteHeader } from '@/components/navigation/SiteHeader';
 import { SiteFooter } from '@/components/navigation/SiteFooter';
-import { DemoPill } from '@/components/navigation/DemoPill';
 import { AnimatedOutlet } from './PageTransition';
 import { SkipLink } from './SkipLink';
 
@@ -13,7 +12,6 @@ export default function PublicLayout() {
         <AnimatedOutlet />
       </main>
       <SiteFooter />
-      <DemoPill />
     </div>
   );
 }

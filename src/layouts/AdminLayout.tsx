@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { BarChart3, ClipboardCheck, GraduationCap, LayoutDashboard, LogOut, Menu, Mic2, Scale, SquareStack, Ticket, Users, X, ListChecks, ArrowUpRight } from 'lucide-react';
 import logo from '@/assets/fundly-logo.png';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { DemoPill } from '@/components/navigation/DemoPill';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { cn } from '@/utils/cn';
@@ -151,7 +150,6 @@ export default function AdminLayout() {
           <AnimatedOutlet />
         </div>
       </main>
-      <DemoPill side="right" />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { businessService, eligibilityService, masterclassService, registrationAvailability, registrationService } from '@/services';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
-import { EmptyState, Skeleton } from '@/components/ui/Feedback';
+import { EmptyState, Notice, Skeleton } from '@/components/ui/Feedback';
 import { BandBadge, ScoreMeter } from '@/components/ui/Readiness';
 import { cn } from '@/utils/cn';
 
@@ -100,12 +100,18 @@ export default function DashboardPage() {
             <Panel title={d.dash.latest} delay={0.08} action={latest ? <Button variant="link" to="/eligibility">{d.dash.viewAll}</Button> : undefined}>
               {latest ? (
                 <>
-                  <div className="flex items-end justify-between gap-3">
-                    <p className="tnum text-[2.75rem] font-bold leading-none tracking-tight">{formatNumber(latest.score)}<span className="ml-1 text-body font-medium text-slate">/ {formatNumber(100)}</span></p>
-                    <BandBadge band={latest.band} />
-                  </div>
-                  <div className="mt-5"><ScoreMeter score={latest.score} band={latest.band} compact /></div>
-                  <p className="mt-4 text-meta text-slate">{t(d.result.assessedOn, { date: formatDate(latest.createdAt) })}{latest.sample && ` · ${d.result.sampleTitle}`}</p>
+                  {latest.sample ? (
+                    <Notice tone="info" title={d.result.scorePendingTitle}>{d.result.scorePendingBody}</Notice>
+                  ) : (
+                    <>
+                      <div className="flex items-end justify-between gap-3">
+                        <p className="tnum text-[2.75rem] font-bold leading-none tracking-tight">{formatNumber(latest.score)}<span className="ml-1 text-body font-medium text-slate">/ {formatNumber(100)}</span></p>
+                        <BandBadge band={latest.band} />
+                      </div>
+                      <div className="mt-5"><ScoreMeter score={latest.score} band={latest.band} compact /></div>
+                    </>
+                  )}
+                  <p className="mt-4 text-meta text-slate">{t(d.result.assessedOn, { date: formatDate(latest.createdAt) })}</p>
                   <Button to={`/eligibility/${latest.id}/result`} variant="secondary" className="mt-4 self-start">{d.dash.viewResult}</Button>
                 </>
               ) : (

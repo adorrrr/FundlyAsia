@@ -6,7 +6,6 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { authService } from '@/services';
 import { Button } from '@/components/ui/Button';
-import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader } from '@/components/forms/AuthBits';
 import { OtpInput } from '@/components/forms/OtpInput';
 
@@ -76,7 +75,6 @@ export default function VerifyEmailPage() {
         <Link to="/signup" className="text-slate hover:text-ink">{d.auth.wrongEmail}</Link>
       </div>
       {resent && <p className="mt-3 text-meta text-ok" role="status">{d.auth.resent}</p>}
-      <Notice tone="demo" className="mt-6">{d.auth.verifyDemo}</Notice>
     </>
   );
 }

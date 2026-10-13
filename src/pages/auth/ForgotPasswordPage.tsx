@@ -10,7 +10,7 @@ import { AuthHeader } from '@/components/forms/AuthBits';
 import { isEmail } from '@/utils/validation';
 
 export default function ForgotPasswordPage() {
-  const { d, t } = useI18n();
+  const { d } = useI18n();
   useDocumentTitle(d.auth.forgotTitle);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string>();
@@ -32,8 +32,8 @@ export default function ForgotPasswordPage() {
       <AuthHeader title={d.auth.forgotTitle} body={d.auth.forgotBody} />
       {done ? (
         <div className="flex flex-col gap-4" role="status">
-          <Notice tone="demo">{t(d.auth.forgotDone, { email })}</Notice>
-          <Button to="/reset-password?token=demo" size="lg" full>{d.auth.forgotContinue}</Button>
+          <Notice tone="info">{d.auth.forgotDone}</Notice>
+          <Button to="/reset-password" size="lg" full>{d.auth.forgotContinue}</Button>
         </div>
       ) : (
         <form onSubmit={submit} noValidate className="flex flex-col gap-4">

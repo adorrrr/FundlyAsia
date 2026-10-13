@@ -1,8 +1,8 @@
 /**
  * Service registry. Pages import services from here only.
  *
- * Every service currently uses its mock (preview) implementation. When the backend
- * exists, implement the same interfaces with apiRequest() and switch on DATA_MODE.
+ * Automatically switches between real MySQL API services and in-browser mock services
+ * based on VITE_DATA_MODE ("api" vs "mock").
  */
 import { mockAuthService, type AuthService } from './authService';
 import { mockBusinessService, type BusinessService } from './businessService';
@@ -13,15 +13,24 @@ import { mockEligibilityService, type EligibilityService } from './eligibilitySe
 import { mockAdminService, type AdminService } from './adminService';
 import { mockReportsService, type ReportsService } from './reportsService';
 
-export const IS_DEMO = true;
+import { DATA_MODE } from './api/client';
+import { apiAuthService } from './api/authApi';
+import { apiBusinessService } from './api/businessApi';
+import { apiMasterclassService } from './api/masterclassApi';
+import { apiRegistrationService } from './api/registrationApi';
+import { apiPaymentService } from './api/paymentApi';
+import { apiEligibilityService } from './api/eligibilityApi';
+import { apiAdminService } from './api/adminApi';
 
-export const authService: AuthService = mockAuthService;
-export const businessService: BusinessService = mockBusinessService;
-export const masterclassService: MasterclassService = mockMasterclassService;
-export const registrationService: RegistrationService = mockRegistrationService;
-export const paymentService: PaymentService = mockPaymentService;
-export const eligibilityService: EligibilityService = mockEligibilityService;
-export const adminService: AdminService = mockAdminService;
+export const IS_DEMO = DATA_MODE !== 'api';
+
+export const authService: AuthService = DATA_MODE === 'api' ? apiAuthService : mockAuthService;
+export const businessService: BusinessService = DATA_MODE === 'api' ? apiBusinessService : mockBusinessService;
+export const masterclassService: MasterclassService = DATA_MODE === 'api' ? apiMasterclassService : mockMasterclassService;
+export const registrationService: RegistrationService = DATA_MODE === 'api' ? apiRegistrationService : mockRegistrationService;
+export const paymentService: PaymentService = DATA_MODE === 'api' ? apiPaymentService : mockPaymentService;
+export const eligibilityService: EligibilityService = DATA_MODE === 'api' ? apiEligibilityService : mockEligibilityService;
+export const adminService: AdminService = DATA_MODE === 'api' ? apiAdminService : mockAdminService;
 export const reportsService: ReportsService = mockReportsService;
 
 export { registrationAvailability } from './masterclassService';

@@ -41,7 +41,7 @@ export default function AdminSmesPage() {
   }, [data, q, intent, industry]);
 
   const exportCsv = () => {
-    downloadCsv('fundly-smes-SAMPLE.csv', rows.map((x) => ({ business: x.profile.businessName, owner: x.profile.ownerName, email: x.profile.email, industry: x.profile.industry, location: x.profile.location, business_type: x.profile.businessType, joined: x.joinedAt, financing_intent: x.financingIntent, latest_score: x.latestScore ?? '' })));
+    downloadCsv('fundly-smes.csv', rows.map((x) => ({ business: x.profile.businessName, owner: x.profile.ownerName, email: x.profile.email, industry: x.profile.industry, location: x.profile.location, business_type: x.profile.businessType, joined: x.joinedAt, financing_intent: x.financingIntent, latest_score: x.latestScore ?? '' })));
     toast(d.admin.regs.exported, 'info');
   };
 

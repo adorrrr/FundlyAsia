@@ -8,7 +8,6 @@ import { initialScoringAreas, readinessBands } from '@/data/scoring';
 import type { ScoringArea } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { LoadingBlock, Notice } from '@/components/ui/Feedback';
 import { BandBadge } from '@/components/ui/Readiness';
 import { useToast } from '@/components/ui/Toast';
@@ -41,7 +40,7 @@ export default function AdminRulesPage() {
 
   return (
     <div className="max-w-4xl">
-      <PageHeader title={a.title} body={a.body} meta={<DemoBadge />} />
+      <PageHeader title={a.title} body={a.body} />
       <Notice tone="warn" className="mb-3">{a.preliminary}</Notice>
       <Notice tone="info" className="mb-6">{a.mappingPending}</Notice>
 

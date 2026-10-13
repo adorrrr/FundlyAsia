@@ -65,7 +65,6 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-body text-slate">
         {d.auth.noAccount} <Link to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="link">{d.auth.signupLink}</Link>
       </p>
-      <Notice tone="demo" className="mt-6">{d.auth.smeDemo}</Notice>
     </>
   );
 }

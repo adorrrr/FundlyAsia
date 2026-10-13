@@ -1,7 +1,7 @@
 import type { Masterclass, MasterclassStatus, RegistrationAvailability, Speaker } from '@/types';
 import { db, delay, uid } from './mock/db';
 import { ServiceError } from './errors';
-import { todayISO } from '@/utils/date';
+import { hasEnded, todayISO } from '@/utils/date';
 
 export type MasterclassInput = Omit<Masterclass, 'id' | 'slug' | 'seatsTaken'>;
 
@@ -12,6 +12,7 @@ export interface MasterclassService {
   create(input: MasterclassInput): Promise<Masterclass>;
   update(id: string, input: MasterclassInput): Promise<Masterclass>;
   setStatus(id: string, status: MasterclassStatus): Promise<void>;
+  remove(id: string): Promise<void>;
   listSpeakers(): Promise<Speaker[]>;
   saveSpeaker(speaker: Omit<Speaker, 'id'> & { id?: string }): Promise<Speaker>;
 }
@@ -57,6 +58,15 @@ export const mockMasterclassService: MasterclassService = {
       if (m) m.status = status;
     });
   },
+  async remove(id) {
+    await delay(400);
+    db.update((s) => {
+      const i = s.masterclasses.findIndex((x) => x.id === id);
+      if (i < 0) throw new ServiceError('not_found');
+      if (s.registrations.some((r) => r.masterclassId === id)) throw new ServiceError('has_registrations');
+      s.masterclasses.splice(i, 1);
+    });
+  },
   async listSpeakers() {
     await delay(200);
     return structuredClone(db.get().speakers);
@@ -88,7 +98,7 @@ export function registrationAvailability(m: Masterclass, today = todayISO()): Re
   if (m.status === 'completed') return { open: false, reason: 'completed' };
   if (m.status === 'draft') return { open: false, reason: 'draft' };
   if (m.status === 'registration_closed' || m.status === 'published') return { open: false, reason: 'closed' };
-  if (m.date && m.date < today) return { open: false, reason: 'completed' };
+  if (hasEnded(m)) return { open: false, reason: 'completed' };
   if (m.registrationDeadline && m.registrationDeadline < today) return { open: false, reason: 'deadline' };
   if (m.seatsTaken >= m.capacity) return { open: false, reason: 'full' };
   return { open: true };

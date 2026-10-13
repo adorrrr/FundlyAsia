@@ -35,3 +35,8 @@ dist-ssr/
 ._*
 Thumbs.db
 ehthumbs.db
+
+# Backend runtime files
+backend/public/uploads/*
+!backend/public/uploads/.htaccess
+backend/storage/*.sqlite

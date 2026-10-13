@@ -24,7 +24,7 @@ function GoogleMark() {
   );
 }
 
-/** Integration-ready Google button. It calls authService.googleSignIn(), which is not connected in preview. */
+/** Google sign-in entry point. */
 export function GoogleButton() {
   const { d } = useI18n();
   const [notice, setNotice] = useState(false);

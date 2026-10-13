@@ -58,12 +58,3 @@ export function StatusBadge({ status }: { status: keyof ReturnType<typeof useI18
   const { d } = useI18n();
   return <Badge tone={statusTone[status] ?? 'neutral'}>{d.status[status]}</Badge>;
 }
-
-export function DemoBadge({ className }: { className?: string }) {
-  const { d } = useI18n();
-  return (
-    <span className={cn('inline-flex items-center rounded-full border border-dashed border-warn/50 bg-warn-soft/70 px-2 py-0.5 text-[0.75rem] font-semibold text-warn', className)}>
-      {d.common.demoBadge}
-    </span>
-  );
-}

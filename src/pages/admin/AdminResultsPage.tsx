@@ -10,7 +10,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
 import { FilterPills, SearchInput } from '@/components/ui/SearchInput';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { BandBadge } from '@/components/ui/Readiness';
 import { useToast } from '@/components/ui/Toast';
@@ -32,7 +31,7 @@ export default function AdminResultsPage() {
   }, [all, q, band]);
 
   const exportCsv = () => {
-    downloadCsv('fundly-eligibility-results-SAMPLE.csv', rows.map((r) => ({ result_id: r.id, sme: r.owner, business: r.business, assessed_on: r.date.slice(0, 10), score: r.score, readiness_level: d.bands[r.band], top_gaps: r.gaps.map((g) => g.en).join('; '), financing_need: r.intent ?? '', funding_amount: r.amountRange ? label('range', r.amountRange) : '', sample_data: 'yes' })));
+    downloadCsv('fundly-eligibility-results.csv', rows.map((r) => ({ result_id: r.id, sme: r.owner, business: r.business, assessed_on: r.date.slice(0, 10), score: r.score, readiness_level: d.bands[r.band], top_gaps: r.gaps.map((g) => g.en).join('; '), financing_need: r.intent ?? '', funding_amount: r.amountRange ? label('range', r.amountRange) : '' })));
     toast(d.admin.regs.exported, 'info');
   };
 
@@ -40,7 +39,7 @@ export default function AdminResultsPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} meta={<DemoBadge />} actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportCsv} disabled={!rows.length}>{d.common.exportCsv}</Button>} />
+      <PageHeader title={a.title} body={a.body} actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportCsv} disabled={!rows.length}>{d.common.exportCsv}</Button>} />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SearchInput value={q} onChange={setQ} placeholder={a.search} />
         <FilterPills label={a.level} value={band} onChange={setBand} options={[{ value: 'all', label: d.common.all }, ...(['low', 'needs_improvement', 'moderate', 'stronger'] as const).map((b) => ({ value: b, label: d.bands[b] }))]} />

@@ -10,7 +10,6 @@ import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
 import { AvailabilityBadge, useAvailabilityText } from '@/components/masterclasses/Availability';
 import { MasterclassMeta } from '@/components/masterclasses/MasterclassMeta';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { GrowBar } from '@/components/ui/Readiness';
 import { durationMinutes } from '@/utils/date';
@@ -33,7 +32,7 @@ export default function MasterclassDetailPage() {
         <Skeleton className="h-[360px] rounded-panel" />
       </div>
     );
-  if (error || !m || m.status === 'draft')
+  if (error || !m || m.status === 'draft' || m.sample)
     return (
       <div className="shell py-16">
         <EmptyState title={d.mc.notFound} action={<Button to="/masterclasses" variant="secondary">{d.mc.backToList}</Button>} />
@@ -81,7 +80,6 @@ export default function MasterclassDetailPage() {
         <div className="flex flex-col rounded-panel bg-surface p-6 shadow-hair sm:p-7">
           <div className="flex flex-wrap items-center gap-2">
             <AvailabilityBadge m={m} avail={avail} />
-            {m.sample && <DemoBadge />}
           </div>
           <p className="mt-4 text-meta font-semibold text-brand">{l(m.topic)}</p>
           <h1 className="mt-1 text-[clamp(1.5rem,1.2rem+1.1vw,2rem)] font-bold leading-tight tracking-tight">{l(m.title)}</h1>

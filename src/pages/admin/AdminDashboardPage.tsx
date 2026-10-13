@@ -3,7 +3,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { adminService, eligibilityService, masterclassService, registrationService } from '@/services';
 import { PageHeader, SectionTitle } from '@/components/ui/PageHeader';
-import { DemoBadge, StatusBadge } from '@/components/ui/Badge';
+import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingBlock } from '@/components/ui/Feedback';
 import { BarList, StatTile } from '@/components/admin/BarList';
@@ -39,7 +39,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} meta={<><DemoBadge /><span className="text-meta text-slate">{a.sampleNote}</span></>} />
+      <PageHeader title={a.title} body={a.body} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <StatTile label={a.totalSmes} value={formatNumber(s.totalSmes)} />
         <StatTile label={a.totalMasterclasses} value={formatNumber(s.totalMasterclasses)} />

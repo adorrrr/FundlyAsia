@@ -6,7 +6,7 @@ import { useOptionLabel } from '@/hooks/useOptions';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { masterclassService, registrationService } from '@/services';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DemoBadge, StatusBadge } from '@/components/ui/Badge';
+import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
@@ -61,7 +61,6 @@ export default function RegistrationDetailPage() {
           <>
             <StatusBadge status={r.status} />
             {r.paymentStatus !== 'not_required' && <StatusBadge status={r.paymentStatus} />}
-            {r.demo && <DemoBadge />}
           </>
         }
       />

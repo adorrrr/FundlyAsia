@@ -46,7 +46,7 @@ export default function RegisterPage() {
   }, [profile.data]);
 
   if (mc.loading || profile.loading || mine.loading) return <LoadingBlock rows={3} />;
-  if (!mc.data || mc.data.status === 'draft') return <EmptyState title={d.mc.notFound} action={<Button to="/masterclasses" variant="secondary">{d.mc.backToList}</Button>} />;
+  if (!mc.data || mc.data.status === 'draft' || mc.data.sample) return <EmptyState title={d.mc.notFound} action={<Button to="/masterclasses" variant="secondary">{d.mc.backToList}</Button>} />;
   const m = mc.data;
   const existing = mine.data?.find((r) => r.masterclassId === m.id && r.status !== 'cancelled');
   if (existing) return <Navigate to={`/registrations/${existing.id}`} replace />;

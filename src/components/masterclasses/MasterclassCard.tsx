@@ -3,7 +3,6 @@ import type { Masterclass, Speaker } from '@/types';
 import { useI18n } from '@/i18n/I18nProvider';
 import { registrationAvailability } from '@/services';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { MasterclassCover } from './MasterclassCover';
 import { MasterclassMeta } from './MasterclassMeta';
 import { AvailabilityBadge } from './Availability';
@@ -20,7 +19,6 @@ export function MasterclassCard({ m, speaker }: { m: Masterclass; speaker?: Spea
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <AvailabilityBadge m={m} avail={avail} />
-          {m.sample && <DemoBadge />}
         </div>
         <p className="text-meta font-semibold text-brand">{l(m.topic)}</p>
         <h3 className="mt-1 text-card font-semibold">

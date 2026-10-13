@@ -7,7 +7,7 @@ import { eligibilityService } from '@/services';
 import type { AnswerType, Question, QuestionCategory } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { Badge, DemoBadge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
 import { SelectField, Switch, TextField, TextareaField } from '@/components/ui/Field';
 import { FilterPills, SearchInput } from '@/components/ui/SearchInput';
@@ -73,7 +73,7 @@ export default function AdminQuestionsPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} meta={<DemoBadge />} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => { setErrors({}); setEdit({ q: blankQuestion((data?.length ?? 0) + 1), isNew: true }); }}>{a.add}</Button>} />
+      <PageHeader title={a.title} body={a.body} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => { setErrors({}); setEdit({ q: blankQuestion((data?.length ?? 0) + 1), isNew: true }); }}>{a.add}</Button>} />
       <Notice tone="info" className="mb-5">{d.admin.rules.mappingPending}</Notice>
       <div className="mb-4 flex flex-col gap-3">
         <SearchInput value={q} onChange={setQ} placeholder={d.common.search} />

@@ -7,12 +7,10 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { masterclassService, paymentService, registrationService } from '@/services';
-import type { PreviewOutcome } from '@/services/paymentService';
 import type { Registration } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
-import { DemoBadge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
 
 type Stage = 'review' | 'preview' | 'processing' | 'result';
@@ -61,12 +59,6 @@ export default function PaymentPage() {
     if (checkoutUrl) window.location.assign(checkoutUrl); // live bKash hosted checkout
     else setStage('preview');
   };
-  const simulate = async (o: PreviewOutcome) => {
-    setStage('processing');
-    const r = await paymentService.previewOutcome!(current.id, o);
-    setCurrent(r);
-    setStage('result');
-  };
   const check = async () => {
     setStage('processing');
     const r = await paymentService.checkStatus(current.id);
@@ -106,14 +98,9 @@ export default function PaymentPage() {
             )}
             {stage === 'preview' && (
               <motion.div key="preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex flex-col gap-5">
-                <div className="flex items-center gap-2"><BkashMark /><DemoBadge /></div>
-                <Notice tone="demo" title={d.pay.previewTitle}>{d.pay.previewBody}</Notice>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <Button variant="secondary" onClick={() => simulate('paid')} icon={<CheckCircle2 className="h-4 w-4 text-ok" />}>{d.pay.simulatePaid}</Button>
-                  <Button variant="secondary" onClick={() => simulate('failed')} icon={<XCircle className="h-4 w-4 text-bad" />}>{d.pay.simulateFailed}</Button>
-                  <Button variant="secondary" onClick={() => simulate('pending')} icon={<Clock3 className="h-4 w-4 text-warn" />}>{d.pay.simulatePending}</Button>
-                </div>
-                <Button variant="ghost" onClick={() => setStage('review')}>{d.common.back}</Button>
+                <div className="flex items-center gap-2"><BkashMark /></div>
+                <Notice tone="info" title={d.pay.checkoutUnavailableTitle}>{d.pay.checkoutUnavailableBody}</Notice>
+                <Button variant="secondary" to={`/registrations/${current.id}`}>{d.pay.backToReg}</Button>
               </motion.div>
             )}
             {stage === 'processing' && (
@@ -142,7 +129,6 @@ export default function PaymentPage() {
                 {current.paymentStatus === 'pending' && (
                   <StateCard tone="warn" icon={<Clock3 className="h-7 w-7" />} title={d.pay.pendingTitle} body={d.pay.pendingBody}>
                     <Button onClick={check}>{d.pay.checkAgain}</Button>
-                    <Button variant="secondary" onClick={() => setStage('preview')}>{d.pay.previewTitle}</Button>
                   </StateCard>
                 )}
                 {(current.paymentStatus === 'refunded' || current.paymentStatus === 'refund_requested') && (

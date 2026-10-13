@@ -9,7 +9,6 @@ import { readinessBands } from '@/data/scoring';
 import { PageHeader, SectionTitle } from '@/components/ui/PageHeader';
 import { TextField } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { LoadingBlock } from '@/components/ui/Feedback';
 import { BarList, StatTile } from '@/components/admin/BarList';
 import { useToast } from '@/components/ui/Toast';
@@ -29,7 +28,7 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} meta={<><DemoBadge /><span className="text-meta text-slate">{d.admin.dash.sampleNote}</span></>} />
+      <PageHeader title={a.title} body={a.body} />
       <fieldset className="surface mb-6 flex flex-col gap-4 p-4 sm:flex-row sm:items-end">
         <legend className="sr-only">{a.range}</legend>
         <TextField label={d.common.from} type="date" value={range.from} max={range.to || undefined} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className="sm:w-48" />
@@ -50,7 +49,7 @@ export default function AdminReportsPage() {
 
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="surface p-5 sm:p-6">
-              <SectionTitle action={<Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} disabled={!data.registrations.rows.length} onClick={() => { downloadCsv('fundly-report-registrations-SAMPLE.csv', data.registrations.rows); exported(); }}>{d.common.exportCsv}</Button>}>
+              <SectionTitle action={<Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} disabled={!data.registrations.rows.length} onClick={() => { downloadCsv('fundly-report-registrations.csv', data.registrations.rows); exported(); }}>{d.common.exportCsv}</Button>}>
                 {a.regs} · {a.byStatus}
               </SectionTitle>
               {data.registrations.rows.length ? (
@@ -60,7 +59,7 @@ export default function AdminReportsPage() {
               )}
             </section>
             <section className="surface p-5 sm:p-6">
-              <SectionTitle action={<Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} disabled={!data.checks.rows.length} onClick={() => { downloadCsv('fundly-report-eligibility-SAMPLE.csv', data.checks.rows); exported(); }}>{d.common.exportCsv}</Button>}>
+              <SectionTitle action={<Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} disabled={!data.checks.rows.length} onClick={() => { downloadCsv('fundly-report-eligibility.csv', data.checks.rows); exported(); }}>{d.common.exportCsv}</Button>}>
                 {a.checks} · {a.byBand}
               </SectionTitle>
               {data.checks.rows.length ? (
@@ -74,7 +73,7 @@ export default function AdminReportsPage() {
           <section className="surface p-5 sm:p-6">
             <SectionTitle
               action={
-                <Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} onClick={() => { downloadCsv('fundly-report-funnel-SAMPLE.csv', a.funnelSteps.map((s, i) => ({ step: s, count: [data.funnel.signedUp, data.funnel.profiled, data.funnel.registered, data.funnel.assessed][i] }))); exported(); }}>
+                <Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} onClick={() => { downloadCsv('fundly-report-funnel.csv', a.funnelSteps.map((s, i) => ({ step: s, count: [data.funnel.signedUp, data.funnel.profiled, data.funnel.registered, data.funnel.assessed][i] }))); exported(); }}>
                   {d.common.exportCsv}
                 </Button>
               }

@@ -22,7 +22,7 @@ export async function apiRequest<T>(path: string, init: RequestInit & { json?: u
   const { json, headers, ...rest } = init;
   const res = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include', // session cookie set by the server
-    headers: { Accept: 'application/json', ...(json ? { 'Content-Type': 'application/json' } : {}), ...headers },
+    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...(json ? { 'Content-Type': 'application/json' } : {}), ...headers },
     body: json ? JSON.stringify(json) : init.body,
     ...rest,
   });

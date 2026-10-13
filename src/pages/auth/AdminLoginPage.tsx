@@ -6,7 +6,6 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { authService } from '@/services';
 import { Button } from '@/components/ui/Button';
 import { PasswordField, TextField } from '@/components/ui/Field';
-import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader } from '@/components/forms/AuthBits';
 import { isEmail, isStrongPassword } from '@/utils/validation';
 
@@ -42,7 +41,6 @@ export default function AdminLoginPage() {
         <PasswordField label={d.auth.password} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} required />
         <Button type="submit" size="lg" full loading={busy} className="mt-2">{busy ? d.auth.loggingIn : d.auth.loginCta}</Button>
       </form>
-      <Notice tone="demo" className="mt-6">{d.auth.adminDemo}</Notice>
       <p className="mt-6 text-center text-body"><Link to="/" className="text-slate hover:text-ink">{d.admin.backToSite}</Link></p>
     </>
   );

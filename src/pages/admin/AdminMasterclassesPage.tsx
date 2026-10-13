@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ServiceError } from '@/services/errors';
+import { Dialog } from '@/components/ui/Dialog';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -30,6 +32,24 @@ export default function AdminMasterclassesPage() {
     const query = q.toLowerCase();
     return (data ?? []).filter((m) => (status === 'all' || m.status === status) && (!query || [m.title.en, m.title.bn, m.topic.en].some((s) => s.toLowerCase().includes(query))));
   }, [data, q, status]);
+
+  const [toDelete, setToDelete] = useState<Masterclass | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!toDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await masterclassService.remove(toDelete.id);
+      toast(a.deleted);
+      setToDelete(null);
+      reload();
+    } catch (e) {
+      toast(e instanceof ServiceError && e.code === 'has_registrations' ? a.deleteHasRegs : a.deleteFailed, 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const changeStatus = async (m: Masterclass, s: MasterclassStatus) => {
     await masterclassService.setStatus(m.id, s);
@@ -87,10 +107,33 @@ export default function AdminMasterclassesPage() {
                 </div>
               ),
             },
-            { key: 'e', header: <span className="sr-only">{d.common.actions}</span>, align: 'right', cell: (m) => <Button size="sm" variant="ghost" to={`/admin/masterclasses/${m.id}/edit`} icon={<Pencil className="h-3.5 w-3.5" />}>{d.common.edit}</Button> },
+            {
+              key: 'e',
+              header: <span className="sr-only">{d.common.actions}</span>,
+              align: 'right',
+              cell: (m) => (
+                <div className="flex justify-end gap-1">
+                  <Button size="sm" variant="ghost" to={`/admin/masterclasses/${m.id}/edit`} icon={<Pencil className="h-3.5 w-3.5" />}>{d.common.edit}</Button>
+                  <Button size="sm" variant="ghost" className="text-bad" onClick={() => setToDelete(m)} icon={<Trash2 className="h-3.5 w-3.5" />}>{a.delete}</Button>
+                </div>
+              ),
+            },
           ]}
         />
       )}
+      <Dialog
+        open={!!toDelete}
+        onClose={() => !deleting && setToDelete(null)}
+        title={a.deleteTitle}
+        description={toDelete ? a.deleteBody.replace('{title}', l(toDelete.title)) : undefined}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" data-autofocus onClick={() => setToDelete(null)} disabled={deleting}>{d.common.cancel}</Button>
+            <Button variant="danger" onClick={confirmDelete} loading={deleting}>{a.delete}</Button>
+          </>
+        }
+      />
     </div>
   );
 }

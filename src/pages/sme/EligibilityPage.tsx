@@ -10,8 +10,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { BandBadge } from '@/components/ui/Readiness';
-import { DemoBadge } from '@/components/ui/Badge';
 import { prefillFromProfile } from '@/components/eligibility/questionLogic';
+import { cn } from '@/utils/cn';
 
 export default function EligibilityPage() {
   const { d, t, formatDate, formatNumber } = useI18n();
@@ -68,12 +68,15 @@ export default function EligibilityPage() {
                 {results.data.map((r) => (
                   <li key={r.id}>
                     <Link to={`/eligibility/${r.id}/result`} className="group flex items-center gap-4 rounded-card bg-surface p-4 shadow-hair transition-shadow hover:shadow-lift">
-                      <span className="tnum w-14 flex-none text-[1.75rem] font-bold leading-none">{formatNumber(r.score)}</span>
+                      <span className={cn('tnum w-14 flex-none leading-none', r.sample ? 'text-meta font-semibold text-slate' : 'text-[1.75rem] font-bold')}>{r.sample ? '—' : formatNumber(r.score)}</span>
                       <span className="min-w-0 flex-1">
-                        <BandBadge band={r.band} />
+                        {r.sample ? (
+                          <span className="text-meta font-semibold text-slate">{d.result.scorePendingTitle}</span>
+                        ) : (
+                          <BandBadge band={r.band} />
+                        )}
                         <span className="block text-meta text-slate">{t(d.elig.submittedOn, { date: formatDate(r.createdAt) })}</span>
                       </span>
-                      {r.sample && <DemoBadge />}
                       <ChevronRight className="h-4 w-4 flex-none text-slate" aria-hidden />
                     </Link>
                   </li>

@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Menu, X } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { DemoPill } from '@/components/navigation/DemoPill';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { cn } from '@/utils/cn';
@@ -101,7 +100,6 @@ export default function SMELayout() {
       <main id="main" tabIndex={-1} className="shell flex-1 py-8 outline-none sm:py-10">
         <AnimatedOutlet />
       </main>
-      <DemoPill />
     </div>
   );
 }

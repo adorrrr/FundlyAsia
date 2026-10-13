@@ -8,6 +8,8 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
+    // Local dev: forward /api to the PHP server (php -S 127.0.0.1:8080 -t backend/public) so cookies stay same-origin.
+    proxy: { '/api': { target: 'http://127.0.0.1:8080' } },
     watch: {
       ignored: ['**/*.zip', '**/dist/**'],
     },

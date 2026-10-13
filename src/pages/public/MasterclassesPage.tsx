@@ -11,10 +11,9 @@ import { MasterclassMeta } from '@/components/masterclasses/MasterclassMeta';
 import { AvailabilityBadge } from '@/components/masterclasses/Availability';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge } from '@/components/ui/Badge';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
 import { Reveal } from '@/components/ui/Reveal';
-import { todayISO } from '@/utils/date';
+import { hasEnded } from '@/utils/date';
 import type { Masterclass } from '@/types';
 
 export default function MasterclassesPage() {
@@ -25,15 +24,14 @@ export default function MasterclassesPage() {
   const [q, setQ] = useState('');
 
   const { featured, upcoming, past } = useMemo(() => {
-    const today = todayISO();
     const all = data ?? [];
     const query = q.trim().toLowerCase();
     const match = (m: Masterclass) =>
       !query || [m.title.en, m.title.bn, m.topic.en, m.topic.bn].some((s) => s.toLowerCase().includes(query));
-    const isPast = (m: Masterclass) => m.status === 'completed' || (!!m.date && m.date < today);
+    const isPast = (m: Masterclass) => m.date ? hasEnded(m) : m.status === 'completed';
     const up = all.filter((m) => !isPast(m) && match(m));
     const feat = !query ? up.find((m) => registrationAvailability(m).open) : undefined;
-    return { featured: feat, upcoming: up.filter((m) => m !== feat), past: all.filter((m) => isPast(m) && match(m)) };
+    return { featured: feat, upcoming: up.filter((m) => m !== feat), past: all.filter((m) => isPast(m) && match(m)).sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime)) };
   }, [data, q]);
 
   return (
@@ -70,7 +68,7 @@ export default function MasterclassesPage() {
               <article className="grid overflow-hidden rounded-panel bg-surface shadow-float lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
                 <MasterclassCover m={featured} size="lg" priority decorative sizes="(min-width: 1024px) 640px, 100vw" className="aspect-[16/9] w-full lg:aspect-auto lg:h-full lg:min-h-[360px]" />
                 <div className="flex flex-col p-6 sm:p-8">
-                  <div className="mb-3 flex flex-wrap gap-2"><AvailabilityBadge m={featured} avail={registrationAvailability(featured)} />{featured.sample && <DemoBadge />}</div>
+                  <div className="mb-3 flex flex-wrap gap-2"><AvailabilityBadge m={featured} avail={registrationAvailability(featured)} /></div>
                   <p className="text-meta font-semibold text-brand">{l(featured.topic)}</p>
                   <h2 className="mt-1 text-section font-semibold">{l(featured.title)}</h2>
                   <p className="mt-2 text-body text-slate">{l(featured.summary)}</p>
@@ -87,29 +85,37 @@ export default function MasterclassesPage() {
             </Reveal>
           )}
 
-          {upcoming.length > 0 && (
+          {(upcoming.length > 0 || (!featured && !q.trim())) && (
             <section className="mt-14" aria-labelledby="up-title">
               <h2 id="up-title" className="mb-5 text-card font-semibold">{d.mc.upcoming}</h2>
-              <ul className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {upcoming.map((m) => (
-                  <li key={m.id}><MasterclassCard m={m} speaker={speakers.byId(m.speakerId)} /></li>
-                ))}
-              </ul>
+              {upcoming.length === 0 ? (
+                <p className="text-body text-slate">{d.mc.noUpcoming}</p>
+              ) : (
+                <ul className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {upcoming.map((m) => (
+                    <li key={m.id}><MasterclassCard m={m} speaker={speakers.byId(m.speakerId)} /></li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 
-          {past.length > 0 && (
+          {(past.length > 0 || !q.trim()) && (
             <section className="mt-14" aria-labelledby="past-title">
               <h2 id="past-title" className="mb-5 text-card font-semibold text-slate">{d.mc.past}</h2>
-              <ul className="grid gap-6 opacity-90 md:grid-cols-2 lg:grid-cols-3">
-                {past.map((m) => (
-                  <li key={m.id}><MasterclassCard m={m} speaker={speakers.byId(m.speakerId)} /></li>
-                ))}
-              </ul>
+              {past.length === 0 ? (
+                <p className="text-body text-slate">{d.mc.noPast}</p>
+              ) : (
+                <ul className="grid gap-6 opacity-90 md:grid-cols-2 lg:grid-cols-3">
+                  {past.map((m) => (
+                    <li key={m.id}><MasterclassCard m={m} speaker={speakers.byId(m.speakerId)} /></li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 
-          {!featured && !upcoming.length && !past.length && <EmptyState className="mt-10" title={d.common.noResults} action={<Button variant="secondary" onClick={() => setQ('')}>{d.common.clearFilters}</Button>} />}
+          {!featured && !upcoming.length && !past.length && !!q.trim() && <EmptyState className="mt-10" title={d.common.noResults} action={<Button variant="secondary" onClick={() => setQ('')}>{d.common.clearFilters}</Button>} />}
         </>
       )}
     </div>

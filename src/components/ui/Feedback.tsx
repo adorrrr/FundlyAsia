@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, FlaskConical, Info, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Button } from './Button';
@@ -46,16 +46,15 @@ export function ErrorState({ onRetry, title, body }: { onRetry?: () => void; tit
   );
 }
 
-type NoticeTone = 'info' | 'warn' | 'demo' | 'ok';
+type NoticeTone = 'info' | 'warn' | 'ok';
 export function Notice({ tone = 'info', title, children, className, icon }: { tone?: NoticeTone; title?: ReactNode; children?: ReactNode; className?: string; icon?: ReactNode }) {
   const styles: Record<NoticeTone, string> = {
     info: 'bg-info-soft/60 border-info/15 text-ink',
     warn: 'bg-warn-soft/70 border-warn/20 text-ink',
-    demo: 'bg-warn-soft/50 border-warn/30 border-dashed text-ink',
     ok: 'bg-ok-soft/70 border-ok/15 text-ink',
   };
-  const Icon = tone === 'demo' ? FlaskConical : tone === 'warn' ? AlertTriangle : Info;
-  const iconColor = { info: 'text-info', warn: 'text-warn', demo: 'text-warn', ok: 'text-ok' }[tone];
+  const Icon = tone === 'warn' ? AlertTriangle : Info;
+  const iconColor = { info: 'text-info', warn: 'text-warn', ok: 'text-ok' }[tone];
   return (
     <div className={cn('flex gap-3 rounded-card border px-4 py-3', styles[tone], className)}>
       <span className={cn('mt-0.5 flex-none', iconColor)} aria-hidden>{icon ?? <Icon className="h-4 w-4" />}</span>

@@ -1,5 +1,4 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Wand2 } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useOptions } from '@/hooks/useOptions';
 import type { ProfileInput } from '@/services/businessService';
@@ -8,7 +7,6 @@ import { SelectField, TextField } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Feedback';
 import { GrowBar } from '@/components/ui/Readiness';
 import { isBlank, isEmail } from '@/utils/validation';
-import { sampleProfileValues } from '@/data/fixtures';
 
 const FIELDS: (keyof ProfileInput)[] = ['businessName', 'businessType', 'industry', 'location', 'businessAge', 'ownershipType', 'ownerName', 'email'];
 
@@ -19,13 +17,11 @@ export function ProfileForm({
   submitLabel,
   onSubmit,
   onCancel,
-  offerSample,
 }: {
   initial: ProfileInput;
   submitLabel: string;
   onSubmit: (v: ProfileInput) => Promise<void>;
   onCancel?: () => void;
-  offerSample?: boolean;
 }) {
   const { d, t, formatNumber } = useI18n();
   const opts = useOptions();
@@ -70,11 +66,6 @@ export function ProfileForm({
           {filled === FIELDS.length ? p.complete : t(p.incomplete, { n: formatNumber(filled), total: formatNumber(FIELDS.length) })}
         </p>
         <GrowBar value={(filled / FIELDS.length) * 100} className="flex-1" tone={filled === FIELDS.length ? 'mark' : 'soft'} />
-        {offerSample && filled < FIELDS.length && (
-          <Button size="sm" variant="ghost" icon={<Wand2 className="h-3.5 w-3.5" />} onClick={() => setV((x) => ({ ...x, ...sampleProfileValues }))}>
-            {d.common.demoShort}
-          </Button>
-        )}
       </div>
       {touched && Object.values(errors).some(Boolean) && <Notice tone="warn">{d.validation.fixErrors}</Notice>}
 

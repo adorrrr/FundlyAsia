@@ -21,7 +21,6 @@ export default function OnboardingPage() {
       <ProfileForm
         initial={{ ...emptyProfile, ownerName: user.name, email: user.email }}
         submitLabel={d.profile.saveContinue}
-        offerSample
         onSubmit={async (v) => {
           await businessService.saveProfile(user.id, v);
           refresh();

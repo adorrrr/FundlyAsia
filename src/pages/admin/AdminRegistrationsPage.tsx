@@ -10,7 +10,7 @@ import { DataTable } from '@/components/ui/DataTable';
 import { FilterPills, SearchInput } from '@/components/ui/SearchInput';
 import { SelectField, TextField } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
-import { DemoBadge, StatusBadge } from '@/components/ui/Badge';
+import { StatusBadge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
@@ -65,8 +65,8 @@ export default function AdminRegistrationsPage() {
 
   const exportCsv = () => {
     downloadCsv(
-      'fundly-registrations-SAMPLE.csv',
-      rows.map((r) => ({ registration_id: r.id, name: r.name, business: r.businessName, email: r.email, masterclass: titleOf(r.masterclassId), registration_status: r.status, payment_status: r.paymentStatus, amount_bdt: r.amount, financing_intent: r.financingIntent, purpose: r.purpose ?? '', amount_range: r.amountRange ?? '', created_at: r.createdAt, sample_data: 'yes' })),
+      'fundly-registrations.csv',
+      rows.map((r) => ({ registration_id: r.id, name: r.name, business: r.businessName, email: r.email, masterclass: titleOf(r.masterclassId), registration_status: r.status, payment_status: r.paymentStatus, amount_bdt: r.amount, financing_intent: r.financingIntent, purpose: r.purpose ?? '', amount_range: r.amountRange ?? '', created_at: r.createdAt })),
     );
     toast(a.exported, 'info');
   };
@@ -75,7 +75,7 @@ export default function AdminRegistrationsPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} meta={<DemoBadge />} actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportCsv} disabled={!rows.length}>{d.common.exportCsv}</Button>} />
+      <PageHeader title={a.title} body={a.body} actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportCsv} disabled={!rows.length}>{d.common.exportCsv}</Button>} />
 
       <section className="mb-8" aria-labelledby="rq">
         <SectionTitle as="h2"><span id="rq">{a.refundQueue}</span></SectionTitle>
@@ -144,7 +144,7 @@ export default function AdminRegistrationsPage() {
             )}
             <div className="flex flex-col gap-3 rounded-card bg-paper p-4">
               <p className="text-meta font-semibold">{t(a.correctTitle, { id: managing.id })}</p>
-              <Notice tone="demo">{a.correctBody}</Notice>
+              <Notice tone="info">{a.correctBody}</Notice>
               <SelectField label={a.payment} value={correction.status} onChange={(e) => setCorrection((c) => ({ ...c, status: e.target.value as PaymentStatus }))} options={PAYMENT.map((p) => ({ value: p, label: d.status[p] }))} />
               <TextField label={a.reason} placeholder={a.reasonPlaceholder} value={correction.reason} onChange={(e) => setCorrection((c) => ({ ...c, reason: e.target.value, error: undefined }))} error={correction.error} required />
               <Button className="self-start" onClick={applyCorrection} loading={busy}>{a.apply}</Button>

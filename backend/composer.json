@@ -1,0 +1,6 @@
+{
+  "name": "fundly/backend",
+  "description": "Fundly PHP/MySQL API",
+  "type": "project",
+  "require": { "php": ">=8.0", "ext-pdo": "*", "ext-fileinfo": "*" }
+}

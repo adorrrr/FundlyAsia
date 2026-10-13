@@ -6,7 +6,7 @@ import { useOptionLabel } from '@/hooks/useOptions';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { adminService, masterclassService } from '@/services';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DemoBadge, StatusBadge } from '@/components/ui/Badge';
+import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { BandBadge, ScoreMeter } from '@/components/ui/Readiness';
@@ -39,7 +39,7 @@ export default function AdminSmeDetailPage() {
 
   return (
     <div>
-      <PageHeader back={{ to: '/admin/smes', label: s.title }} title={p.businessName} body={p.ownerName} meta={<DemoBadge />} />
+      <PageHeader back={{ to: '/admin/smes', label: s.title }} title={p.businessName} body={p.ownerName} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
           <section className="surface p-5 sm:p-6" aria-labelledby="info">

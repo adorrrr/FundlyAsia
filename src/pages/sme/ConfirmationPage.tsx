@@ -38,8 +38,8 @@ export default function ConfirmationPage() {
         >
           <Check className="h-8 w-8" strokeWidth={2.5} aria-hidden />
         </motion.span>
-        <h1 className="relative mt-5 text-page font-bold">{r.demo ? d.confirm.titlePreview : d.confirm.title}</h1>
-        <p className="relative mt-2 text-lead text-slate">{t(d.confirm.body, { title: l(m.title) })}</p>
+        <h1 className="relative mt-5 text-page font-bold">{r.demo ? d.confirm.titlePending : d.confirm.title}</h1>
+        <p className="relative mt-2 text-lead text-slate">{r.demo ? d.confirm.bodyPending : t(d.confirm.body, { title: l(m.title) })}</p>
 
         <div className="relative mt-7 rounded-card bg-surface p-5 text-left shadow-hair">
           <div className="flex items-baseline justify-between gap-3 border-b border-line pb-4">
@@ -50,7 +50,7 @@ export default function ConfirmationPage() {
           <MasterclassMeta m={m} className="mt-3" dense />
         </div>
 
-        {r.demo && <Notice tone="demo" className="relative mt-5 text-left">{d.confirm.previewNote}</Notice>}
+        {r.demo && <Notice tone="info" className="relative mt-5 text-left">{d.confirm.paymentStatusNote}</Notice>}
 
         <div className="relative mt-7 flex flex-col items-center gap-3">
           <p className="text-meta font-semibold text-slate">{d.confirm.addCalendar}</p>
