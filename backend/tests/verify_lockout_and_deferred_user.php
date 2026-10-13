@@ -125,9 +125,67 @@ if (empty($u['email_verified_at'])) {
 
 echo "PASS: User {$u['full_name']} (ID {$u['id']}) successfully created in users table with email_verified_at = {$u['email_verified_at']}.\n";
 
+// 7. Test 5-minute expiry behavior
+echo "Step 6: Testing 5-minute OTP expiry behavior...\n";
+$expireEmail = 'expire_test_' . time() . '@example.com';
+Auth::signupUser('Expire User', $expireEmail, 'Secret123!', $testIp);
+
+// Manually set expires_at to 10 seconds ago (simulating 5 minutes passed)
+Db::pdo()->prepare('UPDATE otp_codes SET expires_at = ? WHERE email = ?')
+    ->execute([gmdate('Y-m-d H:i:s', time() - 10), $expireEmail]);
+
+try {
+    Auth::verifyOtp($expireEmail, '123456', 'signup', $testIp);
+    echo "FAIL: Expired OTP should have been rejected!\n";
+    exit(1);
+} catch (HttpException $e) {
+    echo "Expired OTP rejected as expected: HTTP {$e->status} ({$e->errorCode}) - {$e->getMessage()}\n";
+    if ($e->errorCode !== 'otp_expired') {
+        echo "FAIL: Expected error code 'otp_expired', got '{$e->errorCode}'\n";
+        exit(1);
+    }
+    echo "PASS: Expired OTP rejected with 'otp_expired' and user must sign up again!\n";
+}
+
+// 8. Test cancellation when clicking back or navigating away
+echo "Step 7: Testing cancelSignup on back button navigation...\n";
+$backEmail = 'back_test_' . time() . '@example.com';
+Auth::signupUser('Back User', $backEmail, 'Secret123!', $testIp);
+
+// Verify OTP row exists before cancellation
+$countBefore = (int) Db::pdo()->query("SELECT COUNT(*) FROM otp_codes WHERE email = '$backEmail'")->fetchColumn();
+if ($countBefore !== 1) {
+    echo "FAIL: Expected 1 otp record before cancellation, found $countBefore!\n";
+    exit(1);
+}
+
+// Cancel signup (user clicked Back button or left page)
+Auth::cancelSignup($backEmail);
+
+$countAfter = (int) Db::pdo()->query("SELECT COUNT(*) FROM otp_codes WHERE email = '$backEmail'")->fetchColumn();
+if ($countAfter !== 0) {
+    echo "FAIL: Expected 0 otp records after cancellation, found $countAfter!\n";
+    exit(1);
+}
+echo "PASS: cancelSignup successfully cleared all pending registration data from otp_codes!\n";
+
+// Verify attempting to verify cancelled signup fails
+try {
+    Auth::verifyOtp($backEmail, '123456', 'signup', $testIp);
+    echo "FAIL: Verifying cancelled signup should have thrown an error!\n";
+    exit(1);
+} catch (HttpException $e) {
+    echo "Cancelled verification rejected: HTTP {$e->status} ({$e->errorCode}) - {$e->getMessage()}\n";
+    if ($e->errorCode !== 'otp_expired') {
+        echo "FAIL: Expected 'otp_expired', got '{$e->errorCode}'\n";
+        exit(1);
+    }
+    echo "PASS: Cancelled signup requires user to sign up again from scratch!\n";
+}
+
 // Cleanup test user
-Db::pdo()->prepare('DELETE FROM users WHERE email = ?')->execute([$testEmail]);
-Db::pdo()->prepare('DELETE FROM otp_codes WHERE email = ?')->execute([$testEmail]);
-Db::pdo()->prepare('DELETE FROM login_attempts WHERE email = ? OR ip = ?')->execute([$testEmail, $testIp]);
+Db::pdo()->prepare('DELETE FROM users WHERE email IN (?, ?, ?)')->execute([$testEmail, $expireEmail, $backEmail]);
+Db::pdo()->prepare('DELETE FROM otp_codes WHERE email IN (?, ?, ?)')->execute([$testEmail, $expireEmail, $backEmail]);
+Db::pdo()->prepare('DELETE FROM login_attempts WHERE ip = ?')->execute([$testIp]);
 
 echo "\nALL TESTS PASSED SUCCESSFULLY!\n";

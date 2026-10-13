@@ -26,6 +26,7 @@ return static function (Router $r): void {
     $r->add('POST', '/auth/logout', [AuthController::class, 'logout']);
     $r->add('POST', '/auth/verify-otp', [AuthController::class, 'verifyOtp']);
     $r->add('POST', '/auth/resend-otp', [AuthController::class, 'resendOtp']);
+    $r->add('POST', '/auth/cancel-signup', [AuthController::class, 'cancelSignup']);
     $r->add('POST', '/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     $r->add('POST', '/auth/reset-password', [AuthController::class, 'resetPassword']);
     $r->add('POST', '/auth/admin/login', [AuthController::class, 'adminLogin']);

@@ -1,6 +1,7 @@
 export type ServiceErrorCode =
   | 'invalid_credentials'
   | 'invalid_otp'
+  | 'otp_expired'
   | 'too_many_attempts'
   | 'invalid_token'
   | 'email_taken'

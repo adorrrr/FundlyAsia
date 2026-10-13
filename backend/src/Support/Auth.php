@@ -10,7 +10,7 @@ final class Auth
 {
     private const MAX_FAILURES = 5;
     private const WINDOW_MINUTES = 19;
-    private const OTP_EXPIRY_MINUTES = 10;
+    private const OTP_EXPIRY_MINUTES = 5;
     private const RESET_EXPIRY_HOURS = 2;
 
     public static function startSession(): void
@@ -242,20 +242,27 @@ final class Auth
         // In non-production environments, 123456 is accepted as demo OTP
         $isLocalDemo = Env::get('APP_ENV') !== 'production' && $code === '123456';
 
-        $st = $pdo->prepare('SELECT id, otp_hash, metadata, attempts, expires_at FROM otp_codes WHERE email = ? AND purpose = ? AND expires_at >= ? ORDER BY id DESC LIMIT 1');
-        $st->execute([$email, $purpose, $now]);
+        $st = $pdo->prepare('SELECT id, otp_hash, metadata, attempts, expires_at FROM otp_codes WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1');
+        $st->execute([$email, $purpose]);
         $row = $st->fetch();
 
-        $ok = ($row && password_verify($code, $row['otp_hash'])) || $isLocalDemo;
+        if (!$row) {
+            throw new HttpException(400, 'otp_expired', 'No pending verification found. Please create your account again.');
+        }
+
+        if ($row['expires_at'] < $now) {
+            $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
+            throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
+        }
+
+        $ok = password_verify($code, $row['otp_hash']) || $isLocalDemo;
 
         if (!$ok) {
-            self::recordOtpFailureAndThrow($email, $ip, $row ?: null);
+            self::recordOtpFailureAndThrow($email, $ip, $row);
         }
 
         // Clean up OTP code after successful use
-        if ($row) {
-            $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
-        }
+        $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
         $pdo->prepare('DELETE FROM login_attempts WHERE email = ? OR ip = ?')->execute([$email, $ip]);
 
         // If purpose is signup, create user if not existing, mark verified, and log in
@@ -334,6 +341,12 @@ final class Auth
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_destroy();
         }
+    }
+
+    /** Cancels pending signup OTP and registration data */
+    public static function cancelSignup(string $email): void
+    {
+        Db::pdo()->prepare('DELETE FROM otp_codes WHERE email = ? AND purpose = ?')->execute([$email, 'signup']);
     }
 
     public static function audit(?int $adminId, string $action, string $entity, ?int $entityId, string $ip): void

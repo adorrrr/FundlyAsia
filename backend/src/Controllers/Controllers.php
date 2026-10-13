@@ -94,6 +94,16 @@ final class AuthController
         Response::json(['sent' => true]);
     }
 
+    public static function cancelSignup(Request $req): void
+    {
+        $b = $req->json();
+        $email = is_string($b['email'] ?? null) ? strtolower(trim($b['email'])) : '';
+        if ($email !== '') {
+            Auth::cancelSignup($email);
+        }
+        Response::json(['cancelled' => true]);
+    }
+
     public static function forgotPassword(Request $req): void
     {
         $b = $req->json();

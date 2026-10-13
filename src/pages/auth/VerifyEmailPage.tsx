@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Clock } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
-import { authService } from '@/services';
+import { authService, ServiceError } from '@/services';
 import { Button } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Feedback';
 import { AuthHeader } from '@/components/forms/AuthBits';
@@ -12,6 +12,7 @@ import { OtpInput } from '@/components/forms/OtpInput';
 import { useToast } from '@/components/ui/Toast';
 
 const COOLDOWN = 30;
+const TOTAL_EXPIRY_SECONDS = 300; // 5 minutes
 
 export default function VerifyEmailPage() {
   const { d, t, formatNumber } = useI18n();
@@ -25,29 +26,70 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState(COOLDOWN);
+  const [expiryLeft, setExpiryLeft] = useState(TOTAL_EXPIRY_SECONDS);
   const [resent, setResent] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+  const verifiedRef = useRef(false);
 
+  // Resend cooldown timer
   useEffect(() => {
     if (left <= 0) return;
     const id = setTimeout(() => setLeft((s) => s - 1), 1000);
     return () => clearTimeout(id);
   }, [left]);
 
+  // 5-minute expiry countdown
+  useEffect(() => {
+    if (expiryLeft <= 0) {
+      setIsExpired(true);
+      if (!verifiedRef.current && targetEmail) {
+        authService.cancelSignup(targetEmail);
+      }
+      return;
+    }
+    const id = setTimeout(() => setExpiryLeft((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [expiryLeft, targetEmail]);
+
+  // Handle browser back button or page leave: cancel signup session so user must sign up again
+  useEffect(() => {
+    const onPopState = () => {
+      if (!verifiedRef.current && targetEmail) {
+        authService.cancelSignup(targetEmail);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      if (!verifiedRef.current && targetEmail) {
+        authService.cancelSignup(targetEmail);
+      }
+    };
+  }, [targetEmail]);
+
   if (!targetEmail) return <Navigate to="/signup" replace />;
   if (user?.emailVerified) return <Navigate to="/dashboard" replace />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isExpired) {
+      setError(d.auth.otpExpiredNotice);
+      return;
+    }
     if (code.length !== 6) return setError(d.validation.otp);
     setBusy(true);
     setError(undefined);
     try {
       await authService.verifyEmail(targetEmail, code);
+      verifiedRef.current = true;
       const u = refresh();
       const next = params.get('next');
       nav(u?.hasBusinessProfile ? '/dashboard' : `/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : d.validation.otpWrong;
+      if (err instanceof ServiceError && err.code === 'otp_expired') {
+        setIsExpired(true);
+      }
       setError(msg);
       toast(msg, 'error');
       setCode('');
@@ -57,10 +99,14 @@ export default function VerifyEmailPage() {
   };
 
   const resend = async () => {
+    if (isExpired) return;
     try {
       await authService.resendOtp(targetEmail);
       setResent(true);
       setLeft(COOLDOWN);
+      setExpiryLeft(TOTAL_EXPIRY_SECONDS);
+      setIsExpired(false);
+      setError(undefined);
       toast(d.auth.resent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not resend code.';
@@ -68,26 +114,74 @@ export default function VerifyEmailPage() {
     }
   };
 
+  const handleBackToSignup = async () => {
+    if (targetEmail) {
+      await authService.cancelSignup(targetEmail);
+    }
+    nav('/signup', { replace: true });
+  };
+
+  const mins = Math.floor(expiryLeft / 60);
+  const secs = expiryLeft % 60;
+  const timeFormatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
   return (
     <>
       <AuthHeader title={d.auth.verifyTitle} body={t(d.auth.verifyBody, { email: targetEmail })} />
-      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-        {error && <Notice tone="warn">{error}</Notice>}
-        <OtpInput value={code} onChange={(v) => { setCode(v); setError(undefined); }} invalid={!!error} describedBy={error ? 'otp-err' : undefined} />
-        {error && (
-          <p id="otp-err" role="alert" className="flex items-center gap-1.5 text-meta text-bad"><AlertCircle className="h-3.5 w-3.5" aria-hidden />{error}</p>
-        )}
-        <Button type="submit" size="lg" full loading={busy}>{busy ? d.auth.verifying : d.auth.verifyCta}</Button>
-      </form>
-      <div className="mt-5 flex items-center justify-between text-body">
-        {left > 0 ? (
-          <span className="tnum text-slate" aria-live="polite">{t(d.auth.resendIn, { s: formatNumber(left) })}</span>
-        ) : (
-          <button type="button" onClick={resend} className="link">{d.auth.resend}</button>
-        )}
-        <Link to="/signup" className="text-slate hover:text-ink">{d.auth.wrongEmail}</Link>
+
+      <div className="mb-4 flex items-center justify-between rounded-lg border border-line bg-surface-alt px-3.5 py-2.5 text-body">
+        <span className="flex items-center gap-2 text-meta text-slate">
+          <Clock className={`h-4 w-4 ${expiryLeft <= 60 ? 'text-bad animate-pulse' : 'text-slate'}`} />
+          {t(d.auth.otpExpiresIn, { time: timeFormatted })}
+        </span>
+        <span className={`text-meta font-semibold tabular-nums ${expiryLeft <= 60 ? 'text-bad' : 'text-ink'}`}>
+          {timeFormatted}
+        </span>
       </div>
-      {resent && <p className="mt-3 text-meta text-ok" role="status">{d.auth.resent}</p>}
+
+      {isExpired ? (
+        <div className="flex flex-col gap-4">
+          <Notice tone="warn">{d.auth.otpExpiredNotice}</Notice>
+          <Button type="button" size="lg" full onClick={handleBackToSignup}>
+            {d.auth.createAccountAgain}
+          </Button>
+        </div>
+      ) : (
+        <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+          {error && <Notice tone="warn">{error}</Notice>}
+          <OtpInput
+            value={code}
+            onChange={(v) => { setCode(v); setError(undefined); }}
+            invalid={!!error}
+            describedBy={error ? 'otp-err' : undefined}
+          />
+          {error && (
+            <p id="otp-err" role="alert" className="flex items-center gap-1.5 text-meta text-bad">
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden />{error}
+            </p>
+          )}
+          <Button type="submit" size="lg" full loading={busy}>{busy ? d.auth.verifying : d.auth.verifyCta}</Button>
+        </form>
+      )}
+
+      <div className="mt-5 flex items-center justify-between text-body">
+        {!isExpired && (
+          left > 0 ? (
+            <span className="tnum text-slate" aria-live="polite">{t(d.auth.resendIn, { s: formatNumber(left) })}</span>
+          ) : (
+            <button type="button" onClick={resend} className="link">{d.auth.resend}</button>
+          )
+        )}
+        <button
+          type="button"
+          onClick={handleBackToSignup}
+          className="ml-auto inline-flex items-center gap-1.5 text-slate hover:text-ink transition-colors link"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {d.auth.backToSignup}
+        </button>
+      </div>
+      {resent && !isExpired && <p className="mt-3 text-meta text-ok" role="status">{d.auth.resent}</p>}
     </>
   );
 }

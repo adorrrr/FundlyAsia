@@ -11,6 +11,7 @@ export interface AuthService {
   signup(input: { name: string; email: string; password: string }): Promise<SessionUser>;
   verifyEmail(email: string, code: string): Promise<SessionUser>;
   resendOtp(email: string): Promise<void>;
+  cancelSignup(email: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(token: string, password: string): Promise<void>;
   adminLogin(email: string, password: string): Promise<SessionUser>;
@@ -88,6 +89,9 @@ export const mockAuthService: AuthService = {
   },
   async resendOtp() {
     await delay(400);
+  },
+  async cancelSignup() {
+    await delay(100);
   },
   async requestPasswordReset() {
     await delay(600);

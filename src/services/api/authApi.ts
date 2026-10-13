@@ -169,6 +169,7 @@ export const apiAuthService: AuthService = {
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.status === 429) throw new ServiceError('too_many_attempts', e.message);
+        if (e.status === 400 && e.code === 'otp_expired') throw new ServiceError('otp_expired', e.message);
         if (e.status === 400 || e.status === 422) throw new ServiceError('invalid_otp', e.message);
       }
       throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
@@ -186,6 +187,17 @@ export const apiAuthService: AuthService = {
         throw new ServiceError('too_many_attempts', e.message);
       }
       throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
+    }
+  },
+
+  async cancelSignup(email) {
+    try {
+      await apiRequest<{ cancelled: boolean }>('/auth/cancel-signup', {
+        method: 'POST',
+        json: { email },
+      });
+    } catch {
+      // ignore
     }
   },
 
