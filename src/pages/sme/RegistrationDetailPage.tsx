@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { CreditCard, DollarSign, RefreshCw, Ticket } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -15,6 +15,8 @@ import { CalendarActions } from '@/components/masterclasses/CalendarActions';
 import { TicketModal } from '@/components/masterclasses/TicketModal';
 import { RefundModal } from '@/components/masterclasses/RefundModal';
 
+import { onMasterclassesChanged } from '@/services/api/manualPaymentApi';
+
 export default function RegistrationDetailPage() {
   const { id = '' } = useParams();
   const { d, t, formatDate, formatMoney } = useI18n();
@@ -24,6 +26,13 @@ export default function RegistrationDetailPage() {
     async () => (reg.data ? masterclassService.get(reg.data.masterclassId) : undefined),
     [reg.data?.masterclassId]
   );
+
+  useEffect(() => {
+    return onMasterclassesChanged(() => {
+      reg.reload();
+      mc.reload();
+    });
+  }, [reg, mc]);
 
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [refundModalOpen, setRefundModalOpen] = useState(false);
@@ -170,10 +179,15 @@ export default function RegistrationDetailPage() {
           )}
 
           {r.paymentStatus === 'refunded' && (
-            <Notice tone="info" title="Payment Refunded">
-              This registration has been cancelled and refunded. Refunded amount:{' '}
-              {formatMoney(r.amountRefunded || r.amount)}.
-            </Notice>
+            <div className="flex flex-col gap-2 rounded-xl border border-ok/30 bg-ok-soft/40 p-5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ok text-white font-bold text-xs">✓</span>
+                <h3 className="text-card font-bold text-ok">Payment Refunded (টাকা রিফান্ড সম্পন্ন হয়েছে)</h3>
+              </div>
+              <p className="text-meta text-slate">
+                Your refund of <strong>{formatMoney(r.amountRefunded || r.amount)}</strong> has been successfully processed and disbursed to your designated account by Fundly administration. The seat reservation for this session has been cancelled.
+              </p>
+            </div>
           )}
 
           {/* Registration Info */}

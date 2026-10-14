@@ -16,7 +16,7 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
 import { AdminRosterModal } from '@/components/masterclasses/AdminRosterModal';
 import { useToast } from '@/components/ui/Toast';
-import { notifyMasterclassesChanged } from '@/services/api/manualPaymentApi';
+import { notifyMasterclassesChanged, onMasterclassesChanged } from '@/services/api/manualPaymentApi';
 
 export const MC_STATUSES: MasterclassStatus[] = ['draft', 'published', 'registration_open', 'registration_closed', 'completed', 'cancelled'];
 
@@ -30,14 +30,12 @@ export default function AdminMasterclassesPage() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | MasterclassStatus>('all');
 
-  // React to updates from other tabs or modals (e.g. refunds in roster modal)
+  // React instantly to updates from other tabs or modals
   useEffect(() => {
-    const handler = () => {
+    return onMasterclassesChanged(() => {
       reload();
       regs.reload();
-    };
-    window.addEventListener('fundly:masterclasses-updated', handler);
-    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+    });
   }, [reload, regs]);
 
   const rows = useMemo(() => {
@@ -110,29 +108,65 @@ export default function AdminMasterclassesPage() {
                 </div>
               ),
             },
-            { key: 'd', header: d.mc.date, cell: (m) => formatDate(m.date), hideBelow: 'md' },
+            {
+              key: 'd',
+              header: d.mc.date,
+              cell: (m) => (
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold text-ink">{formatDate(m.date)}</span>
+                  {m.startTime && m.endTime && (
+                    <span className="text-[0.75rem] text-slate">
+                      {m.startTime} – {m.endTime}
+                    </span>
+                  )}
+                </div>
+              ),
+              hideBelow: 'md',
+            },
             {
               key: 'r',
               header: a.registrations,
               cell: (m) => {
                 const activeCount = (regs.data ?? []).filter((r) => r.masterclassId === m.id && r.status !== 'cancelled').length;
-                return <span className="tnum font-medium">{formatNumber(activeCount)} / {formatNumber(m.capacity)}</span>;
+                const isFull = activeCount >= m.capacity;
+                return (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="tnum font-bold text-ink">
+                      {formatNumber(activeCount)} / {formatNumber(m.capacity)} seats
+                    </span>
+                    <span className={`text-[0.6875rem] font-medium ${isFull ? 'text-bad' : 'text-slate'}`}>
+                      {isFull ? 'Full (আসন পূর্ণ)' : `${m.capacity - activeCount} seats left`}
+                    </span>
+                  </div>
+                );
               },
               hideBelow: 'lg',
             },
-            { key: 'f', header: d.mc.fee, cell: (m) => <span className="tnum">{formatMoney(m.fee)}</span>, hideBelow: 'xl' },
+            {
+              key: 'f',
+              header: d.mc.fee,
+              cell: (m) =>
+                m.fee <= 0 ? (
+                  <span className="inline-flex items-center rounded-full bg-ok-soft px-2.5 py-0.5 text-xs font-bold text-ok">
+                    Free
+                  </span>
+                ) : (
+                  <span className="tnum font-bold text-ink">{formatMoney(m.fee)}</span>
+                ),
+              hideBelow: 'xl',
+            },
             {
               key: 's',
               header: d.common.status,
               cell: (m) => (
-                <div className="flex flex-col items-start gap-1.5">
+                <div className="flex flex-col items-start gap-1">
                   <StatusBadge status={m.status} />
                   <label className="sr-only" htmlFor={`st-${m.id}`}>{a.changeStatus}</label>
                   <select
                     id={`st-${m.id}`}
                     value={m.status}
                     onChange={(e) => changeStatus(m, e.target.value as MasterclassStatus)}
-                    className="h-8 rounded-md border border-line bg-surface px-2 text-meta focus:border-brand focus:shadow-focus focus:outline-none"
+                    className="h-6 rounded border border-line bg-paper px-1.5 text-[0.6875rem] font-medium text-slate hover:border-brand focus:border-brand focus:outline-none"
                   >
                     {MC_STATUSES.map((s) => <option key={s} value={s}>{d.status[s]}</option>)}
                   </select>

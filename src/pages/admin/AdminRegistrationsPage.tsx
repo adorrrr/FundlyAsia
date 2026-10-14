@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
+  Copy,
   DollarSign,
   Download,
   Eye,
@@ -15,7 +16,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { masterclassService, registrationService } from '@/services';
-import { manualPaymentApi } from '@/services/api/manualPaymentApi';
+import { manualPaymentApi, notifyMasterclassesChanged, onMasterclassesChanged } from '@/services/api/manualPaymentApi';
 import type {
   PaymentStatus,
   PaymentSubmission,
@@ -131,14 +132,12 @@ export default function AdminRegistrationsPage() {
 
   // Synchronize immediately when masterclasses or registrations are updated anywhere
   useEffect(() => {
-    const handler = () => {
+    return onMasterclassesChanged(() => {
       regs.reload();
       classes.reload();
       fetchSubmissions();
       fetchRefunds();
-    };
-    window.addEventListener('fundly:masterclasses-updated', handler);
-    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+    });
   }, [regs, classes, fetchSubmissions, fetchRefunds]);
 
   const titleOf = (id: string) => l(classes.data?.find((m) => m.id === id)?.title);
@@ -249,19 +248,6 @@ export default function AdminRegistrationsPage() {
   };
 
   // Refund Actions
-  const handleApproveRefund = async (refRecord: RefundRecord) => {
-    setBusy(true);
-    try {
-      await manualPaymentApi.approveRefund(refRecord.id, 'Approved to processing');
-      toast('Refund request moved to processing.', 'success');
-      fetchRefunds();
-    } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : 'Approval failed.', 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const handleRejectRefund = async () => {
     if (!rejectRefModal || !rejectRefReason.trim()) {
       toast('Please enter a rejection reason.', 'error');
@@ -282,6 +268,11 @@ export default function AdminRegistrationsPage() {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast('Account number copied to clipboard!', 'info');
+  };
+
   const handleCompleteRefund = async () => {
     if (!completeRefModal) return;
     setBusy(true);
@@ -290,12 +281,14 @@ export default function AdminRegistrationsPage() {
         trxId: disbursementTrxId.trim() || undefined,
         notes: disbursementNotes.trim() || undefined,
       });
-      toast('Refund disbursement completed and recorded.', 'success');
+      toast('Refund disbursement confirmed! Registration cancelled and seat released.', 'success');
+      notifyMasterclassesChanged();
       setCompleteRefModal(null);
       setDisbursementTrxId('');
       setDisbursementNotes('');
       fetchRefunds();
       regs.reload();
+      classes.reload();
     } catch (err: unknown) {
       toast(err instanceof Error ? err.message : 'Disbursement recording failed.', 'error');
     } finally {
@@ -797,15 +790,14 @@ export default function AdminRegistrationsPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1.5">
-                            {isPending && (
+                            {isPending || isProcessing ? (
                               <>
                                 <Button
                                   size="sm"
-                                  variant="secondary"
-                                  onClick={() => handleApproveRefund(refRecord)}
-                                  loading={busy}
+                                  onClick={() => setCompleteRefModal(refRecord)}
+                                  icon={<CheckCircle2 className="h-3.5 w-3.5" />}
                                 >
-                                  Accept
+                                  Review & Refund
                                 </Button>
                                 <Button
                                   size="sm"
@@ -816,19 +808,18 @@ export default function AdminRegistrationsPage() {
                                   Reject
                                 </Button>
                               </>
-                            )}
-                            {isProcessing && (
+                            ) : refRecord.status === 'completed' ? (
                               <Button
                                 size="sm"
+                                variant="secondary"
                                 onClick={() => setCompleteRefModal(refRecord)}
-                                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                                icon={<Eye className="h-3.5 w-3.5" />}
                               >
-                                Record Disbursement
+                                View Record
                               </Button>
-                            )}
-                            {refRecord.status === 'completed' && (
-                              <span className="font-mono text-[0.75rem] text-slate">
-                                Trx: {refRecord.providerRefundId || 'Manual'}
+                            ) : (
+                              <span className="text-[0.75rem] text-slate italic">
+                                {refRecord.rejectionReason ? `Rejected: ${refRecord.rejectionReason}` : 'Rejected'}
                               </span>
                             )}
                           </div>
@@ -1159,42 +1150,151 @@ export default function AdminRegistrationsPage() {
       <Dialog
         open={!!completeRefModal}
         onClose={() => setCompleteRefModal(null)}
-        title="Record Refund Disbursement"
-        size="sm"
+        title={
+          completeRefModal?.status === 'completed'
+            ? 'Refund Disbursement Record (রিফান্ড বিবরণ)'
+            : 'Review Refund & Confirm Disbursement (টাকা ফেরত নিশ্চিতকরণ)'
+        }
+        size="md"
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setCompleteRefModal(null)} disabled={busy}>
-              Cancel
+          completeRefModal?.status === 'completed' ? (
+            <Button variant="secondary" onClick={() => setCompleteRefModal(null)}>
+              Close
             </Button>
-            <Button onClick={handleCompleteRefund} loading={busy}>
-              Confirm Disbursement
-            </Button>
-          </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setCompleteRefModal(null)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCompleteRefund}
+                loading={busy}
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                className="bg-ok hover:bg-ok/90 text-white"
+              >
+                Confirm Refund Sent (টাকা ফেরত নিশ্চিত করুন)
+              </Button>
+            </>
+          )
         }
       >
         {completeRefModal && (
           <div className="space-y-4">
-            <div className="rounded-lg bg-paper p-3 text-meta text-slate">
-              <p>
-                <strong>Destination:</strong> {completeRefModal.refundMethod.toUpperCase()} –{' '}
-                {completeRefModal.destinationAccount}
-              </p>
-              <p className="mt-1">
-                <strong>Amount:</strong> {formatMoney(completeRefModal.amount)}
-              </p>
+            {/* Attendee & Registration Information */}
+            <div className="rounded-xl border border-line bg-paper/60 p-4">
+              <h4 className="text-meta font-bold text-ink mb-3 uppercase tracking-wider">
+                Attendee & Session Details (অংশগ্রহণকারীর তথ্য)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-meta">
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Attendee Name</span>
+                  <span className="font-semibold text-ink">{completeRefModal.attendeeName || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Email Address</span>
+                  <span className="font-medium text-ink">{completeRefModal.attendeeEmail || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Business Name</span>
+                  <span className="font-medium text-ink">{completeRefModal.businessName || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Registration Code</span>
+                  <span className="font-mono font-medium text-ink">{completeRefModal.registrationCode || completeRefModal.registrationId}</span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-slate block text-[0.75rem]">Masterclass Session</span>
+                  <span className="font-semibold text-ink">{completeRefModal.masterclassTitle || 'Masterclass'}</span>
+                </div>
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Amount Paid</span>
+                  <span className="font-semibold text-ink">{formatMoney(completeRefModal.amountPaid)}</span>
+                </div>
+                <div>
+                  <span className="text-slate block text-[0.75rem]">Requested Refund Amount</span>
+                  <span className="font-bold text-bad">{formatMoney(completeRefModal.amount)}</span>
+                </div>
+              </div>
             </div>
-            <TextField
-              label="Disbursement Transaction ID (Optional)"
-              placeholder="e.g. Payout TrxID from bKash / Bank"
-              value={disbursementTrxId}
-              onChange={(e) => setDisbursementTrxId(e.target.value)}
-            />
-            <TextField
-              label="Disbursement Notes"
-              placeholder="e.g. Sent via corporate merchant wallet"
-              value={disbursementNotes}
-              onChange={(e) => setDisbursementNotes(e.target.value)}
-            />
+
+            {/* Refund Target Account Card (What admin needs to send money to) */}
+            <div className="rounded-xl border-2 border-brand/30 bg-brand-soft/30 p-4">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-meta font-bold text-brand-deep uppercase tracking-wider">
+                  Disbursement Destination (যেখানে টাকা পাঠাতে হবে)
+                </span>
+                <span className="rounded-md bg-brand text-white px-2 py-0.5 text-[0.6875rem] font-bold uppercase">
+                  {completeRefModal.refundMethod}
+                </span>
+              </div>
+
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-3 rounded-lg border border-line">
+                <div>
+                  <div className="text-[0.75rem] text-slate">Account / Mobile Number:</div>
+                  <div className="font-mono text-lg font-bold text-ink tracking-wider">
+                    {completeRefModal.destinationAccount}
+                  </div>
+                  {completeRefModal.accountHolderName && (
+                    <div className="text-meta text-slate mt-0.5">
+                      Account Name: <strong className="text-ink">{completeRefModal.accountHolderName}</strong>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<Copy className="h-3.5 w-3.5" />}
+                  onClick={() => copyToClipboard(completeRefModal.destinationAccount)}
+                  className="sm:self-center"
+                >
+                  Copy Number
+                </Button>
+              </div>
+
+              {/* User Reason */}
+              <div className="mt-3 rounded-lg bg-surface/80 p-2.5 text-meta border border-line/60">
+                <span className="font-semibold text-ink">User's Refund Reason:</span>
+                <p className="mt-0.5 text-slate italic whitespace-pre-wrap">{completeRefModal.reason}</p>
+              </div>
+            </div>
+
+            {/* Admin Input or Completed Record */}
+            {completeRefModal.status === 'completed' ? (
+              <div className="rounded-xl border border-ok/30 bg-ok-soft/30 p-3 text-meta">
+                <p className="font-semibold text-ok flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Refund has been disbursed and confirmed.
+                </p>
+                {completeRefModal.providerRefundId && (
+                  <p className="mt-1 text-slate">
+                    <strong>Disbursement TrxID:</strong> {completeRefModal.providerRefundId}
+                  </p>
+                )}
+                {completeRefModal.notes && (
+                  <p className="mt-0.5 text-slate">
+                    <strong>Notes:</strong> {completeRefModal.notes}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-lg bg-mist/60 p-2.5 text-[0.75rem] text-slate">
+                  💡 <strong>Admin নির্দেশিকা:</strong> অনুগ্রহ করে আপনার bKash / Nagad / Bank একাউন্ট থেকে উপরের নম্বরে <strong>{formatMoney(completeRefModal.amount)}</strong> টাকা ম্যানুয়ালি পাঠিয়ে দিন। টাকা পাঠানো শেষ হলে নিচের <strong>"Confirm Refund Sent"</strong> বাটনে চাপ দিন। সাথে সাথে ব্যবহারকারীর প্যানেলে রিফান্ড কমপ্লিট দেখাবে এবং সিট খালি হয়ে যাবে।
+                </div>
+                <TextField
+                  label="Disbursement Transaction ID (ঐচ্ছিক)"
+                  placeholder="e.g. bKash / Nagad TrxID or Bank Payout Ref"
+                  value={disbursementTrxId}
+                  onChange={(e) => setDisbursementTrxId(e.target.value)}
+                />
+                <TextField
+                  label="Disbursement Notes (ঐচ্ছিক)"
+                  placeholder="e.g. Sent via Fundly merchant wallet"
+                  value={disbursementNotes}
+                  onChange={(e) => setDisbursementNotes(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         )}
       </Dialog>

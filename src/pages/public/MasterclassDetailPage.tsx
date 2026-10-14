@@ -15,6 +15,8 @@ import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { GrowBar } from '@/components/ui/Readiness';
 import { durationMinutes } from '@/utils/date';
 
+import { onMasterclassesChanged } from '@/services/api/manualPaymentApi';
+
 export default function MasterclassDetailPage() {
   const { id = '' } = useParams();
   const { d, l, t, formatDate, formatMoney, formatNumber } = useI18n();
@@ -23,9 +25,7 @@ export default function MasterclassDetailPage() {
   const { data: m, loading, error, reload } = useAsync(() => masterclassService.get(id), [id]);
 
   useEffect(() => {
-    const handler = () => reload();
-    window.addEventListener('fundly:masterclasses-updated', handler);
-    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+    return onMasterclassesChanged(() => reload());
   }, [reload]);
 
   const { data: speaker } = useAsync(async () => (m?.speakerId ? (await masterclassService.listSpeakers()).find((s) => s.id === m.speakerId) : undefined), [m?.speakerId]);

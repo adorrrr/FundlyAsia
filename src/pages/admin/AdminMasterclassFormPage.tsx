@@ -15,6 +15,7 @@ import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { MC_STATUSES } from './AdminMasterclassesPage';
 import { isBlank } from '@/utils/validation';
+import { notifyMasterclassesChanged } from '@/services/api/manualPaymentApi';
 
 const blankL = (): Localized => ({ en: '', bn: '' });
 const NEW_SPEAKER = '__new';
@@ -117,6 +118,7 @@ export default function AdminMasterclassFormPage() {
       };
       if (editing && id) await masterclassService.update(id, payload);
       else await masterclassService.create(payload);
+      notifyMasterclassesChanged();
       toast(editing ? a.updated : a.created);
       nav('/admin/masterclasses');
     } catch (err: unknown) {

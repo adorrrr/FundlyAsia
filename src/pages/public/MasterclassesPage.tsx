@@ -16,15 +16,15 @@ import { Reveal } from '@/components/ui/Reveal';
 import { hasEnded } from '@/utils/date';
 import type { Masterclass } from '@/types';
 
+import { onMasterclassesChanged } from '@/services/api/manualPaymentApi';
+
 export default function MasterclassesPage() {
   const { d, l, formatMoney } = useI18n();
   useDocumentTitle(d.mc.listTitle);
   const { data, loading, error, reload } = useAsync(() => masterclassService.listPublic(), []);
 
   useEffect(() => {
-    const handler = () => reload();
-    window.addEventListener('fundly:masterclasses-updated', handler);
-    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+    return onMasterclassesChanged(() => reload());
   }, [reload]);
 
   const speakers = useSpeakers();

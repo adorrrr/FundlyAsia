@@ -14,6 +14,8 @@ import { EmptyState, ErrorState, LoadingBlock } from '@/components/ui/Feedback';
 import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
 import { TicketModal } from '@/components/masterclasses/TicketModal';
 
+import { onMasterclassesChanged } from '@/services/api/manualPaymentApi';
+
 export default function MyRegistrationsPage() {
   const { d, l, formatDate, formatMoney } = useI18n();
   useDocumentTitle(d.myreg.title);
@@ -22,12 +24,10 @@ export default function MyRegistrationsPage() {
   const classes = useAsync(() => masterclassService.listPublic(), []);
 
   useEffect(() => {
-    const handler = () => {
+    return onMasterclassesChanged(() => {
       regs.reload();
       classes.reload();
-    };
-    window.addEventListener('fundly:masterclasses-updated', handler);
-    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+    });
   }, [regs, classes]);
 
   const [selectedTicketReg, setSelectedTicketReg] = useState<string | null>(null);
@@ -91,6 +91,16 @@ export default function MyRegistrationsPage() {
                         <StatusBadge status={r.status} />
                         {r.paymentStatus !== 'not_required' && (
                           <StatusBadge status={r.paymentStatus} />
+                        )}
+                        {r.paymentStatus === 'refunded' && (
+                          <span className="rounded-full bg-ok-soft px-2.5 py-0.5 text-[0.6875rem] font-bold text-ok">
+                            Refund Disbursed (টাকা ফেরত প্রদান করা হয়েছে)
+                          </span>
+                        )}
+                        {r.paymentStatus === 'refund_requested' && (
+                          <span className="rounded-full bg-warn-soft px-2.5 py-0.5 text-[0.6875rem] font-bold text-warn">
+                            Refund Under Review (রিফান্ড রিভিউতে আছে)
+                          </span>
                         )}
                         {r.ticketNumber && (
                           <span className="font-mono text-[0.6875rem] font-bold text-slate">

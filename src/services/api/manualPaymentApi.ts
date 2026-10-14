@@ -203,10 +203,32 @@ export const manualPaymentApi = {
   },
 };
 
-/** Broadcast an event across the window so all pages/tabs reload masterclasses */
+/** Broadcast an event across all components, pages, and browser tabs */
 export function notifyMasterclassesChanged() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('fundly:masterclasses-updated'));
+    try {
+      localStorage.setItem('fundly:masterclasses-updated-ts', Date.now().toString());
+    } catch {
+      /* ignore */
+    }
   }
+}
+
+/** Subscribe to masterclass / registration / refund updates across all components and browser tabs */
+export function onMasterclassesChanged(handler: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const localHandler = () => handler();
+  const storageHandler = (e: StorageEvent) => {
+    if (e.key === 'fundly:masterclasses-updated-ts') {
+      handler();
+    }
+  };
+  window.addEventListener('fundly:masterclasses-updated', localHandler);
+  window.addEventListener('storage', storageHandler);
+  return () => {
+    window.removeEventListener('fundly:masterclasses-updated', localHandler);
+    window.removeEventListener('storage', storageHandler);
+  };
 }
 
