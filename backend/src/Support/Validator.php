@@ -221,7 +221,7 @@ final class Validator
     public static function registration(array $in): array
     {
         $e = [];
-        $mid = is_string($in['masterclassId'] ?? null) ? trim($in['masterclassId']) : '';
+        $mid = isset($in['masterclassId']) && !is_array($in['masterclassId']) ? trim((string) $in['masterclassId']) : '';
         if ($mid === '') {
             $e['masterclassId'] = 'Masterclass is required.';
         }
@@ -285,7 +285,7 @@ final class Validator
             $e['amount'] = 'Amount must be greater than 0.';
         }
 
-        if (empty($in['accuracyConfirmed'])) {
+        if (empty($in['accuracyConfirmed']) && empty($in['confirmAccurate'])) {
             $e['accuracyConfirmed'] = 'You must confirm that the submitted details are accurate.';
         }
 
@@ -333,7 +333,7 @@ final class Validator
             $e['accountHolderName'] = 'Account holder name is required for bank transfer.';
         }
 
-        if (empty($in['accuracyConfirmed'])) {
+        if (isset($in['accuracyConfirmed']) && empty($in['accuracyConfirmed']) && empty($in['confirmAccurate'])) {
             $e['accuracyConfirmed'] = 'You must confirm that the refund information is accurate.';
         }
 

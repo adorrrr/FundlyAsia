@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertCircle, DollarSign, X } from 'lucide-react';
 import type { Registration } from '@/types';
 import { manualPaymentApi } from '@/services/api/manualPaymentApi';
+import { ApiError } from '@/services/api/client';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { SelectField, TextField } from '@/components/ui/Field';
@@ -69,12 +70,17 @@ export function RefundModal({ registration, open, onClose, onSuccess }: RefundMo
         destinationAccount: destinationAccount.trim(),
         accountHolderName: accountHolderName.trim() || undefined,
         refundMethod,
+        confirmAccurate: true,
+        accuracyConfirmed: true,
       });
 
       toast('Refund request submitted successfully for administrative review.', 'success');
       onSuccess();
       onClose();
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.errors) {
+        setErrors((prev) => ({ ...prev, ...err.errors }));
+      }
       toast(err instanceof Error ? err.message : 'Failed to submit refund request.', 'error');
     } finally {
       setBusy(false);

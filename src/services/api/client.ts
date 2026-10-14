@@ -13,6 +13,7 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public code?: string,
+    public errors?: Record<string, string>,
   ) {
     super(message);
   }
@@ -35,17 +36,21 @@ export async function apiRequest<T>(path: string, init: RequestInit & { json?: u
   if (!res.ok) {
     let message = res.statusText;
     let code: string | undefined;
+    let errors: Record<string, string> | undefined;
     try {
       const body = await res.json();
       message = body.message ?? message;
       code = body.code;
+      if (body.errors && typeof body.errors === 'object') {
+        errors = body.errors;
+      }
     } catch {
       /* non-JSON error */
     }
     if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/admin/login')) {
       onUnauthorizedHandler?.();
     }
-    throw new ApiError(res.status, message, code);
+    throw new ApiError(res.status, message, code, errors);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }

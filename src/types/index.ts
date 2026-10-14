@@ -182,6 +182,7 @@ export interface PaymentSubmissionInput {
   paidAt?: string;
   receiptPath?: string;
   confirmAccurate: boolean;
+  accuracyConfirmed?: boolean;
 }
 
 export interface DigitalTicket {
@@ -255,6 +256,8 @@ export interface UserRefundRequestInput {
   destinationAccount: string;
   accountHolderName?: string;
   refundMethod: string;
+  confirmAccurate?: boolean;
+  accuracyConfirmed?: boolean;
 }
 
 export interface RosterAttendee {

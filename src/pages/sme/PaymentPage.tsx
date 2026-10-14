@@ -17,6 +17,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { masterclassService, registrationService } from '@/services';
 import { manualPaymentApi } from '@/services/api/manualPaymentApi';
+import { ApiError } from '@/services/api/client';
 import type { PaymentMethod, Registration } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -139,6 +140,7 @@ export default function PaymentPage() {
         amount: parseFloat(amount),
         receiptPath: receiptPath || undefined,
         confirmAccurate: true,
+        accuracyConfirmed: true,
       });
 
       setSubmittedSuccess(true);
@@ -146,6 +148,13 @@ export default function PaymentPage() {
       const updated = await registrationService.get(current.id);
       setCurrent(updated);
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.errors) {
+        const serverErrors = { ...err.errors };
+        if (serverErrors.accuracyConfirmed && !serverErrors.confirm) {
+          serverErrors.confirm = serverErrors.accuracyConfirmed;
+        }
+        setErrors((prev) => ({ ...prev, ...serverErrors }));
+      }
       toast(err instanceof Error ? err.message : 'Submission failed.', 'error');
     } finally {
       setSubmitting(false);
@@ -359,6 +368,7 @@ export default function PaymentPage() {
                       { value: 'bank_transfer', label: 'Bank Account Transfer' },
                       { value: 'other', label: 'Other Bangla QR Provider' },
                     ]}
+                    error={errors.paymentMethod}
                     required
                   />
 
@@ -446,7 +456,9 @@ export default function PaymentPage() {
                       Fundly’s designated account and the Transaction ID provided is accurate.
                     </span>
                   </label>
-                  {errors.confirm && <p className="mt-1 text-meta text-bad">{errors.confirm}</p>}
+                  {(errors.confirm || errors.accuracyConfirmed) && (
+                    <p className="mt-1 text-meta text-bad">{errors.confirm || errors.accuracyConfirmed}</p>
+                  )}
                 </div>
 
                 {/* Submit Action */}
