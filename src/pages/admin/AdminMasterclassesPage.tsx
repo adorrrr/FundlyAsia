@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, Users } from 'lucide-react';
-import { ServiceError } from '@/services/errors';
-import { Dialog } from '@/components/ui/Dialog';
+import { Archive, ArrowLeft, Pencil, Plus, RotateCcw, Users } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -18,7 +16,7 @@ import { AdminRosterModal } from '@/components/masterclasses/AdminRosterModal';
 import { useToast } from '@/components/ui/Toast';
 import { notifyMasterclassesChanged, onMasterclassesChanged } from '@/services/api/manualPaymentApi';
 
-export const MC_STATUSES: MasterclassStatus[] = ['draft', 'published', 'registration_open', 'registration_closed', 'completed', 'cancelled'];
+export const MC_STATUSES: MasterclassStatus[] = ['registration_open', 'registration_closed', 'completed', 'cancelled'];
 
 export default function AdminMasterclassesPage() {
   const { d, l, formatDate, formatMoney, formatNumber } = useI18n();
@@ -29,6 +27,8 @@ export default function AdminMasterclassesPage() {
   const regs = useAsync(() => registrationService.listAll(), []);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | MasterclassStatus>('all');
+  const [showingArchived, setShowingArchived] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState<string | null>(null);
 
   // React instantly to updates from other tabs or modals
   useEffect(() => {
@@ -40,28 +40,25 @@ export default function AdminMasterclassesPage() {
 
   const rows = useMemo(() => {
     const query = q.toLowerCase();
-    return (data ?? []).filter((m) => (status === 'all' || m.status === status) && (!query || [m.title.en, m.title.bn, m.topic.en].some((s) => s.toLowerCase().includes(query))));
-  }, [data, q, status]);
+    return (data ?? []).filter((m) => Boolean(m.archived) === showingArchived && (status === 'all' || m.status === status) && (!query || [m.title.en, m.title.bn, m.topic.en].some((s) => s.toLowerCase().includes(query))));
+  }, [data, q, showingArchived, status]);
 
-  const [toDelete, setToDelete] = useState<Masterclass | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [rosterMc, setRosterMc] = useState<Masterclass | null>(null);
 
-  const confirmDelete = async () => {
-    if (!toDelete || deleting) return;
-    setDeleting(true);
+  const toggleArchived = async (masterclass: Masterclass) => {
+    if (archiveBusy) return;
+    const archived = !masterclass.archived;
+    setArchiveBusy(masterclass.id);
+    setData((prev) => prev?.map((item) => (item.id === masterclass.id ? { ...item, archived } : item)));
     try {
-      await masterclassService.remove(toDelete.id);
-      setData((prev) => prev?.filter((x) => x.id !== toDelete.id));
-      toast(a.deleted);
-      setToDelete(null);
+      await masterclassService.setArchived(masterclass.id, archived);
+      toast(archived ? a.archivedSuccess : a.restoredSuccess);
       notifyMasterclassesChanged();
-      reload();
-      regs.reload();
-    } catch (e) {
-      toast(e instanceof ServiceError && e.code === 'has_registrations' ? 'Cannot delete: active registrations exist. Please refund or cancel attendees first.' : a.deleteFailed, 'error');
+    } catch (err: unknown) {
+      setData((prev) => prev?.map((item) => (item.id === masterclass.id ? { ...item, archived: masterclass.archived } : item)));
+      toast(err instanceof Error ? err.message : a.archiveFailed, 'error');
     } finally {
-      setDeleting(false);
+      setArchiveBusy(null);
     }
   };
 
@@ -81,7 +78,23 @@ export default function AdminMasterclassesPage() {
 
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} actions={<Button to="/admin/masterclasses/create" icon={<Plus className="h-4 w-4" />}>{a.create}</Button>} />
+      <PageHeader
+        title={showingArchived ? a.archivedTitle : a.title}
+        body={a.body}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={showingArchived ? <ArrowLeft className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              onClick={() => setShowingArchived((current) => !current)}
+              aria-pressed={showingArchived}
+            >
+              {showingArchived ? a.activeSessions : a.archivedSessions}
+            </Button>
+            {!showingArchived && <Button to="/admin/masterclasses/create" icon={<Plus className="h-4 w-4" />}>{a.create}</Button>}
+          </>
+        }
+      />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SearchInput value={q} onChange={setQ} placeholder={a.search} />
         <FilterPills label={d.common.status} value={status} onChange={setStatus} options={[{ value: 'all', label: d.common.all }, ...MC_STATUSES.map((s) => ({ value: s, label: d.status[s] }))]} />
@@ -93,7 +106,13 @@ export default function AdminMasterclassesPage() {
           caption={a.title}
           rows={rows}
           rowKey={(m) => m.id}
-          empty={<EmptyState title={data?.length ? d.common.noResults : a.empty} body={data?.length ? undefined : a.emptyBody} action={<Button to="/admin/masterclasses/create">{a.create}</Button>} />}
+          empty={
+            <EmptyState
+              title={showingArchived ? a.archivedEmpty : data?.some((m) => !m.archived) ? d.common.noResults : a.empty}
+              body={showingArchived ? undefined : data?.some((m) => !m.archived) ? undefined : a.emptyBody}
+              action={!showingArchived && <Button to="/admin/masterclasses/create">{a.create}</Button>}
+            />
+          }
           columns={[
             {
               key: 't',
@@ -164,10 +183,14 @@ export default function AdminMasterclassesPage() {
                   <label className="sr-only" htmlFor={`st-${m.id}`}>{a.changeStatus}</label>
                   <select
                     id={`st-${m.id}`}
-                    value={m.status}
-                    onChange={(e) => changeStatus(m, e.target.value as MasterclassStatus)}
+                    value={MC_STATUSES.includes(m.status) ? m.status : ''}
+                    onChange={(e) => {
+                      const nextStatus = e.target.value as MasterclassStatus;
+                      if (MC_STATUSES.includes(nextStatus)) changeStatus(m, nextStatus);
+                    }}
                     className="h-6 rounded border border-line bg-paper px-1.5 text-[0.6875rem] font-medium text-slate hover:border-brand focus:border-brand focus:outline-none"
                   >
+                    {!MC_STATUSES.includes(m.status) && <option value="">{a.changeStatus}</option>}
                     {MC_STATUSES.map((s) => <option key={s} value={s}>{d.status[s]}</option>)}
                   </select>
                 </div>
@@ -183,70 +206,22 @@ export default function AdminMasterclassesPage() {
                     Roster
                   </Button>
                   <Button size="sm" variant="ghost" to={`/admin/masterclasses/${m.id}/edit`} icon={<Pencil className="h-3.5 w-3.5" />}>{d.common.edit}</Button>
-                  <Button size="sm" variant="ghost" className="text-bad" onClick={() => setToDelete(m)} icon={<Trash2 className="h-3.5 w-3.5" />}>{a.delete}</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={m.archived ? <RotateCcw className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+                    onClick={() => toggleArchived(m)}
+                    loading={archiveBusy === m.id}
+                    disabled={archiveBusy !== null && archiveBusy !== m.id}
+                  >
+                    {m.archived ? a.restore : a.archive}
+                  </Button>
                 </div>
               ),
             },
           ]}
         />
       )}
-      {toDelete && (() => {
-        const activeSeats = (regs.data ?? []).filter((r) => r.masterclassId === toDelete.id && r.status !== 'cancelled').length;
-        const hasActive = activeSeats > 0;
-        return (
-          <Dialog
-            open={!!toDelete}
-            onClose={() => !deleting && setToDelete(null)}
-            title={a.deleteTitle}
-            description={hasActive ? undefined : a.deleteBody.replace('{title}', l(toDelete.title))}
-            size="sm"
-            footer={
-              <>
-                <Button variant="secondary" data-autofocus onClick={() => setToDelete(null)} disabled={deleting}>
-                  {d.common.cancel}
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={confirmDelete}
-                  loading={deleting}
-                  disabled={deleting || hasActive}
-                >
-                  {a.delete}
-                </Button>
-              </>
-            }
-          >
-            {hasActive && (
-              <div className="space-y-3">
-                <p className="text-body text-slate">
-                  {a.deleteBody.replace('{title}', l(toDelete.title))}
-                </p>
-                <div className="rounded-xl border border-bad/30 bg-bad-soft/30 p-4 text-meta text-bad">
-                  <p className="font-bold">Cannot Delete: Active Registrations Exist</p>
-                  <p className="mt-1 text-slate">
-                    This masterclass currently has <strong className="text-bad">{activeSeats}</strong> active registered attendee(s).
-                    Please refund or cancel all registered attendees before deleting this session. Once refunded/cancelled, the seat count returns to 0 and you can delete it.
-                  </p>
-                  <div className="mt-3">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      icon={<Users className="h-3.5 w-3.5" />}
-                      onClick={() => {
-                        setRosterMc(toDelete);
-                        setToDelete(null);
-                      }}
-                    >
-                      Open Attendee Roster & Refund
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Dialog>
-        );
-      })()}
-
       {rosterMc && (
         <AdminRosterModal
           masterclass={rosterMc}

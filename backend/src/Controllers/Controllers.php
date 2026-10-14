@@ -228,6 +228,19 @@ final class MasterclassController
         Response::noContent();
     }
 
+    public static function setArchived(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = self::id($req);
+        $archived = $req->json()['archived'] ?? null;
+        if (!is_bool($archived)) {
+            throw new HttpException(422, 'validation', 'Invalid archive state.');
+        }
+        MasterclassRepository::setArchived($id, $archived);
+        Auth::audit((int) $admin['id'], $archived ? 'masterclass.archive' : 'masterclass.restore', 'masterclass', $id, $req->ip());
+        Response::noContent();
+    }
+
     public static function delete(Request $req): void
     {
         $admin = Auth::requireAdmin();
@@ -786,4 +799,3 @@ final class AdminController
         Response::json($res);
     }
 }
-

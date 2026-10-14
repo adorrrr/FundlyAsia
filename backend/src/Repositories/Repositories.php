@@ -81,7 +81,7 @@ final class MasterclassRepository
     /** @return array<int,array<string,mixed>> */
     public static function list(bool $includeDrafts): array
     {
-        $sql = self::SELECT . ($includeDrafts ? '' : " WHERE m.status <> 'draft'") . ' ORDER BY (m.event_date IS NULL), m.event_date, m.start_time, m.id';
+        $sql = self::SELECT . ($includeDrafts ? '' : " WHERE m.status <> 'draft' AND m.is_archived = 0") . ' ORDER BY (m.event_date IS NULL), m.event_date, m.start_time, m.id';
         return array_map([self::class, 'map'], Db::pdo()->query($sql)->fetchAll());
     }
 
@@ -89,7 +89,7 @@ final class MasterclassRepository
     public static function find(string $idOrSlug, bool $includeDrafts): ?array
     {
         $numeric = Validator::isId($idOrSlug);
-        $st = Db::pdo()->prepare(self::SELECT . ' WHERE ' . ($numeric ? 'm.id = ?' : 'm.slug = ?') . ($includeDrafts ? '' : " AND m.status <> 'draft'"));
+        $st = Db::pdo()->prepare(self::SELECT . ' WHERE ' . ($numeric ? 'm.id = ?' : 'm.slug = ?') . ($includeDrafts ? '' : " AND m.status <> 'draft' AND m.is_archived = 0"));
         $st->execute([$numeric ? (int) $idOrSlug : $idOrSlug]);
         $row = $st->fetch();
         return $row ? self::map($row) : null;
@@ -130,6 +130,15 @@ final class MasterclassRepository
     {
         $st = Db::pdo()->prepare('UPDATE masterclasses SET status = ?, updated_at = ? WHERE id = ?');
         $st->execute([$status, Db::now(), $id]);
+        if (!self::find((string) $id, true)) {
+            throw new HttpException(404, 'not_found', 'Masterclass not found.');
+        }
+    }
+
+    public static function setArchived(int $id, bool $archived): void
+    {
+        $st = Db::pdo()->prepare('UPDATE masterclasses SET is_archived = ?, updated_at = ? WHERE id = ?');
+        $st->execute([$archived ? 1 : 0, Db::now(), $id]);
         if (!self::find((string) $id, true)) {
             throw new HttpException(404, 'not_found', 'Masterclass not found.');
         }
@@ -236,6 +245,7 @@ final class MasterclassRepository
             'registrationDeadline' => (string) $r['registration_deadline'],
             'fee' => (float) $r['fee'],
             'status' => $r['status'],
+            'archived' => (bool) $r['is_archived'],
             'speakerId' => $r['speaker_id'] === null ? '' : (string) $r['speaker_id'],
             'coverTone' => $r['cover_tone'],
         ];
@@ -364,11 +374,15 @@ final class RegistrationRepository
         $pdo->beginTransaction();
         try {
             $mid = (int) $v['masterclassId'];
-            $st = $pdo->prepare('SELECT id, capacity, fee, status, registration_deadline FROM masterclasses WHERE id = ?');
+            $st = $pdo->prepare('SELECT id, capacity, fee, status, registration_deadline, is_archived FROM masterclasses WHERE id = ?');
             $st->execute([$mid]);
             $mc = $st->fetch();
             if (!$mc) {
                 throw new HttpException(404, 'not_found', 'Masterclass not found.');
+            }
+
+            if ((bool) $mc['is_archived']) {
+                throw new HttpException(409, 'registration_closed', 'Registration is closed for this session.');
             }
 
             if (!in_array($mc['status'], ['published', 'registration_open'], true)) {
@@ -1887,4 +1901,3 @@ final class AdminRepository
         }
     }
 }
-

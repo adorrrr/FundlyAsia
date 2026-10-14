@@ -33,7 +33,7 @@ const empty: MasterclassInput = {
   capacity: 30,
   registrationDeadline: '',
   fee: 0,
-  status: 'draft',
+  status: 'registration_open',
   speakerId: '',
   coverTone: 'leaf',
 };
@@ -190,7 +190,16 @@ export default function AdminMasterclassFormPage() {
         <div className="flex flex-col gap-5 xl:sticky xl:top-8 xl:self-start">
           <fieldset className="surface flex flex-col gap-5 p-5 sm:p-6">
             <legend className="contents"><h2 className="text-card font-semibold">{a.sectionRegistration}</h2></legend>
-            <SelectField label={d.common.status} value={v.status} onChange={(e) => set('status', e.target.value as MasterclassStatus)} options={MC_STATUSES.map((s) => ({ value: s, label: d.status[s] }))} />
+            <SelectField
+              label={d.common.status}
+              value={MC_STATUSES.includes(v.status) ? v.status : ''}
+              onChange={(e) => {
+                const nextStatus = e.target.value as MasterclassStatus;
+                if (MC_STATUSES.includes(nextStatus)) set('status', nextStatus);
+              }}
+              placeholder={d.profile.choose}
+              options={MC_STATUSES.map((s) => ({ value: s, label: d.status[s] }))}
+            />
             <TextField label={a.capacity} type="number" min={1} inputMode="numeric" value={String(v.capacity)} onChange={(e) => set('capacity', Number(e.target.value))} error={err('capacity')} />
             <TextField label={a.deadline} type="date" value={v.registrationDeadline} onChange={(e) => set('registrationDeadline', e.target.value)} error={err('registrationDeadline')} />
             <TextField label={a.fee} type="number" min={0} inputMode="numeric" prefix="৳" value={String(v.fee)} onChange={(e) => set('fee', Number(e.target.value))} hint={a.feeHelp} error={err('fee')} />

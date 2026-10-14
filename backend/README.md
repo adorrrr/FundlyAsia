@@ -9,7 +9,7 @@ Built with native PHP 8.1+, PDO, strict types, parameterized SQL queries, secure
 ## 1. Architecture & Capabilities
 
 The backend provides complete database persistence and REST API endpoints for:
-1. **Masterclasses & Speakers**: Public catalog, upcoming/past sorting, draft restrictions, speaker profiles, photo/cover uploads, delete checks with 409 prevention when registrations exist.
+1. **Masterclasses & Speakers**: Public catalog, upcoming/past sorting, draft restrictions, reversible masterclass archiving (hidden from public listings/details and closed to new registrations), speaker profiles, photo/cover uploads, delete checks with 409 prevention when registrations exist.
 2. **Admin Authentication & RBAC**: Database-verified credentials, bcrypt password hashing, 15-minute brute-force throttle, HttpOnly session cookies, CSRF protection via custom header check (`X-Requested-With: XMLHttpRequest`), audit logging.
 3. **SME Authentication**: SME registration, 6-digit OTP verification with 10-minute expiry and attempt limit, login/logout, forgot password, tokenized password reset.
 4. **Business Profiles**: Multi-field SME business profiles (registration info, trade license, TIN, annual revenue, bank account status, debt history) linked 1:1 with SME owner.
@@ -41,7 +41,8 @@ backend/
 ├── database/
 │   ├── migrations/
 │   │   ├── 001_core.sql      # Core tables (admin_users, masterclasses, speakers, etc.)
-│   │   └── 002_sme_platform.sql # Platform tables (users, business_profiles, registrations, payments, questions, assessments, results, scoring_rules)
+│   │   ├── 002_sme_platform.sql # Platform tables (users, business_profiles, registrations, payments, questions, assessments, results, scoring_rules)
+│   │   └── 007_masterclass_archiving.sql # Reversible masterclass archive flag
 │   ├── migrate.php           # Idempotent migration runner
 │   ├── seed_admin.php        # Admin creation/reset utility
 │   └── seed_platform.php     # Seeds 6 scoring categories & 20 bilingual questions
@@ -166,6 +167,7 @@ backend/
 - `GET|POST /admin/masterclasses` — List / create masterclasses
 - `GET|PUT|DELETE /admin/masterclasses/{id}` — Manage masterclass
 - `PATCH /admin/masterclasses/{id}/status` — Change status
+- `PATCH /admin/masterclasses/{id}/archive` — Archive or restore a masterclass (`{"archived": true|false}`)
 - `POST|PUT /admin/speakers` — Manage speakers
 - `POST /admin/uploads` — Upload image asset
 - `GET /admin/smes` — List all registered SMEs

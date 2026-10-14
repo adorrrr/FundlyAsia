@@ -62,6 +62,10 @@ export const apiMasterclassService: MasterclassService = {
     await guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}/status`, { method: 'PATCH', json: { status } }));
     notifyMasterclassesChanged();
   },
+  setArchived: async (id, archived) => {
+    await guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}/archive`, { method: 'PATCH', json: { archived } }));
+    notifyMasterclassesChanged();
+  },
   remove: async (id) => {
     await guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}`, { method: 'DELETE' }));
     notifyMasterclassesChanged();

@@ -13,7 +13,6 @@ import type { Masterclass, RosterAttendee } from '@/types';
 import { manualPaymentApi } from '@/services/api/manualPaymentApi';
 import { useI18n } from '@/i18n/I18nProvider';
 import { Button } from '@/components/ui/Button';
-import { Dialog } from '@/components/ui/Dialog';
 import { LoadingBlock } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/utils/csv';
@@ -30,53 +29,9 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
   const [roster, setRoster] = useState<RosterAttendee[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'attended' | 'unmarked' | 'no_show'>('all');
   const [scanTicket, setScanTicket] = useState('');
   const [scanBusy, setScanBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-
-  // Direct Refund Modal State
-  const [refundAttendee, setRefundAttendee] = useState<RosterAttendee | null>(null);
-  const [refundAmount, setRefundAmount] = useState<number>(0);
-  const [refundReason, setRefundReason] = useState<string>('Masterclass session cancelled by organizer');
-  const [refundMethod, setRefundMethod] = useState<string>('bkash');
-  const [refundDest, setRefundDest] = useState<string>('');
-  const [refundTrx, setRefundTrx] = useState<string>('');
-  const [refundBusy, setRefundBusy] = useState(false);
-
-  const openRefundModal = (att: RosterAttendee) => {
-    setRefundAttendee(att);
-    setRefundAmount(att.amountPaid);
-    setRefundReason('Masterclass session cancelled by organizer - seat released');
-    setRefundMethod('bkash');
-    setRefundDest('');
-    setRefundTrx('');
-  };
-
-  const handleProcessRefund = async () => {
-    if (!refundAttendee) return;
-    if (!refundReason.trim()) {
-      toast('A refund reason is required.', 'error');
-      return;
-    }
-    setRefundBusy(true);
-    try {
-      await manualPaymentApi.directRefund(refundAttendee.id, {
-        amount: Number(refundAmount) || 0,
-        reason: refundReason.trim(),
-        destinationAccount: refundDest.trim() || undefined,
-        refundMethod,
-        trxId: refundTrx.trim() || undefined,
-      });
-      toast(`Refund completed for ${refundAttendee.name}. Seat released!`, 'success');
-      setRefundAttendee(null);
-      fetchRoster();
-    } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : 'Refund failed.', 'error');
-    } finally {
-      setRefundBusy(false);
-    }
-  };
 
   const fetchRoster = useCallback(() => {
     setLoading(true);
@@ -99,16 +54,12 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return roster.filter((att) => {
-      const matchSearch =
-        !q ||
-        [att.name, att.email, att.businessName, att.code, att.ticketNumber || '']
-          .some((val) => val.toLowerCase().includes(q));
-      const matchStatus =
-        statusFilter === 'all' || att.attendanceStatus === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [roster, search, statusFilter]);
+    return roster.filter((att) =>
+      !q ||
+      [att.name, att.email, att.businessName, att.code, att.ticketNumber || '']
+        .some((val) => val.toLowerCase().includes(q)),
+    );
+  }, [roster, search]);
 
   const attendedCount = roster.filter((x) => x.attendanceStatus === 'attended').length;
 
@@ -231,9 +182,9 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
           </form>
         </div>
 
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col gap-3 border-b border-line px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 sm:max-w-xs">
+        {/* Search */}
+        <div className="border-b border-line px-6 py-3">
+          <div className="relative w-full sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate" />
             <input
               type="text"
@@ -242,28 +193,6 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-md border border-line bg-surface py-1.5 pl-9 pr-3 text-meta text-ink placeholder:text-slate focus:border-brand focus:outline-none"
             />
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto text-meta">
-            <span className="text-slate">Filter:</span>
-            {(['all', 'unmarked', 'attended', 'no_show'] as const).map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`rounded-full px-2.5 py-1 font-medium transition-colors ${
-                  statusFilter === st
-                    ? 'bg-brand-deep text-white'
-                    : 'bg-mist/80 text-slate hover:bg-mist hover:text-ink'
-                }`}
-              >
-                {st === 'all'
-                  ? 'All'
-                  : st === 'attended'
-                  ? 'Attended'
-                  : st === 'unmarked'
-                  ? 'Pending Arrival'
-                  : 'No-Show'}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -337,8 +266,8 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                       </dd>
                     </div>
                   </dl>
-                  <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
-                    {att.attendanceStatus !== 'attended' && (
+                  {att.attendanceStatus !== 'attended' && (
+                    <div className="mt-3 border-t border-line pt-3">
                       <Button
                         size="sm"
                         variant="secondary"
@@ -349,16 +278,8 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                       >
                         Check In
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-bad hover:bg-bad-soft"
-                      onClick={() => openRefundModal(att)}
-                    >
-                      Refund & Cancel
-                    </Button>
-                  </div>
+                    </div>
+                  )}
                 </article>
               ))}
               </div>
@@ -434,14 +355,6 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                               Check In
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-bad hover:bg-bad-soft"
-                            onClick={() => openRefundModal(att)}
-                          >
-                            Refund & Cancel
-                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -461,105 +374,6 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
         </div>
       </div>
 
-      {/* Direct Refund & Seat Release Modal */}
-      {refundAttendee && (
-        <Dialog
-          open={!!refundAttendee}
-          onClose={() => !refundBusy && setRefundAttendee(null)}
-          title="Process Refund & Release Seat"
-          description={`Issue a refund and cancel seat reservation for ${refundAttendee.name}.`}
-          size="sm"
-          footer={
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => setRefundAttendee(null)}
-                disabled={refundBusy}
-              >
-                Keep Seat
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleProcessRefund}
-                loading={refundBusy}
-              >
-                Confirm Refund & Release Seat
-              </Button>
-            </>
-          }
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg bg-paper p-3 text-meta">
-              <p className="font-semibold text-ink">{refundAttendee.name}</p>
-              <p className="text-slate">{refundAttendee.email} · {refundAttendee.businessName}</p>
-              <p className="mt-1 font-mono font-bold text-brand-deep">
-                Paid: {formatMoney(refundAttendee.amountPaid)}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-meta font-medium text-ink mb-1">Refund Amount (BDT)</label>
-              <input
-                type="number"
-                min="0"
-                max={refundAttendee.amountPaid}
-                step="0.01"
-                value={refundAmount}
-                onChange={(e) => setRefundAmount(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-meta font-medium text-ink mb-1">Refund Method</label>
-              <select
-                value={refundMethod}
-                onChange={(e) => setRefundMethod(e.target.value)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
-              >
-                <option value="bkash">bKash</option>
-                <option value="nagad">Nagad</option>
-                <option value="rocket">Rocket</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cash">Cash / Manual</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-meta font-medium text-ink mb-1">Destination Account / Mobile</label>
-              <input
-                type="text"
-                placeholder="e.g. 017XXXXXXXX"
-                value={refundDest}
-                onChange={(e) => setRefundDest(e.target.value)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-meta font-medium text-ink mb-1">Disbursement TrxID (Optional)</label>
-              <input
-                type="text"
-                placeholder="e.g. TRX123456"
-                value={refundTrx}
-                onChange={(e) => setRefundTrx(e.target.value)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-meta font-medium text-ink mb-1">Reason for Refund *</label>
-              <textarea
-                rows={2}
-                value={refundReason}
-                onChange={(e) => setRefundReason(e.target.value)}
-                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
-                required
-              />
-            </div>
-          </div>
-        </Dialog>
-      )}
     </div>
   );
 }

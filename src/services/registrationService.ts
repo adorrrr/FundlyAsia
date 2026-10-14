@@ -44,6 +44,7 @@ export const mockRegistrationService: RegistrationService = {
     await delay(700);
     const mc = db.get().masterclasses.find((m) => m.id === input.masterclassId);
     if (!mc) throw new ServiceError('not_found');
+    if (mc.archived) throw new ServiceError('registration_closed');
     const paid = mc.fee > 0;
     const reg: Registration = {
       ...input,

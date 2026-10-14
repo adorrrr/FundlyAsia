@@ -88,6 +88,7 @@ return static function (Router $r): void {
     $r->add('GET', '/admin/masterclasses/{id}', [MasterclassController::class, 'showAdmin']);
     $r->add('PUT', '/admin/masterclasses/{id}', [MasterclassController::class, 'update']);
     $r->add('PATCH', '/admin/masterclasses/{id}/status', [MasterclassController::class, 'setStatus']);
+    $r->add('PATCH', '/admin/masterclasses/{id}/archive', [MasterclassController::class, 'setArchived']);
     $r->add('DELETE', '/admin/masterclasses/{id}', [MasterclassController::class, 'delete']);
     $r->add('GET', '/admin/masterclasses/{id}/roster', [AdminController::class, 'roster']);
     $r->add('POST', '/admin/masterclasses/{id}/check-in', [AdminController::class, 'checkIn']);

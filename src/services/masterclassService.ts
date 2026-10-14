@@ -1,5 +1,6 @@
 import type { Masterclass, MasterclassStatus, RegistrationAvailability, Speaker } from '@/types';
 import { db, delay, uid } from './mock/db';
+import { mockAuthService } from './authService';
 import { ServiceError } from './errors';
 import { hasEnded, todayISO } from '@/utils/date';
 
@@ -12,6 +13,7 @@ export interface MasterclassService {
   create(input: MasterclassInput): Promise<Masterclass>;
   update(id: string, input: MasterclassInput): Promise<Masterclass>;
   setStatus(id: string, status: MasterclassStatus): Promise<void>;
+  setArchived(id: string, archived: boolean): Promise<void>;
   remove(id: string): Promise<void>;
   listSpeakers(): Promise<Speaker[]>;
   saveSpeaker(speaker: Omit<Speaker, 'id'> & { id?: string }): Promise<Speaker>;
@@ -23,7 +25,7 @@ const byDate = (a: Masterclass, b: Masterclass) => (a.date || '9999').localeComp
 export const mockMasterclassService: MasterclassService = {
   async listPublic() {
     await delay(300);
-    return structuredClone(db.get().masterclasses.filter((m) => m.status !== 'draft').sort(byDate));
+    return structuredClone(db.get().masterclasses.filter((m) => m.status !== 'draft' && !m.archived).sort(byDate));
   },
   async listAll() {
     await delay(250);
@@ -32,7 +34,7 @@ export const mockMasterclassService: MasterclassService = {
   async get(id) {
     await delay(250);
     const m = db.get().masterclasses.find((x) => x.id === id || x.slug === id);
-    if (!m) throw new ServiceError('not_found');
+    if (!m || (m.archived && mockAuthService.getSession()?.role !== 'admin')) throw new ServiceError('not_found');
     return structuredClone(m);
   },
   async create(input) {
@@ -57,6 +59,14 @@ export const mockMasterclassService: MasterclassService = {
     db.update((s) => {
       const m = s.masterclasses.find((x) => x.id === id);
       if (m) m.status = status;
+    });
+  },
+  async setArchived(id, archived) {
+    await delay(300);
+    db.update((s) => {
+      const m = s.masterclasses.find((x) => x.id === id);
+      if (!m) throw new ServiceError('not_found');
+      m.archived = archived;
     });
   },
   async remove(id) {
@@ -108,6 +118,7 @@ function slugify(s: string) {
 
 /** Whether a masterclass can take registrations right now, based only on its own data. */
 export function registrationAvailability(m: Masterclass, today = todayISO()): RegistrationAvailability {
+  if (m.archived) return { open: false, reason: 'closed' };
   if (m.status === 'cancelled') return { open: false, reason: 'cancelled' };
   if (m.status === 'completed') return { open: false, reason: 'completed' };
   if (m.status === 'draft') return { open: false, reason: 'draft' };

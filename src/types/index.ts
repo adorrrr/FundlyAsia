@@ -66,6 +66,7 @@ export interface Masterclass {
   registrationDeadline: ISODate | '';
   fee: number; // BDT, 0 = free
   status: MasterclassStatus;
+  archived?: boolean;
   /** '' when the speaker is not confirmed yet. */
   speakerId: string;
   cover?: string;
