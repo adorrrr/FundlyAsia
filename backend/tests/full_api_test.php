@@ -57,7 +57,7 @@ check('admin me -> 200', $c === 200 && ($me['role'] ?? '') === 'admin', "code: $
 
 // Create test masterclass for registrations
 $mcData = [
-    'title' => ['en' => 'Fundly Loan Lab Live', 'bn' => 'ফান্ডলি লোন ল্যাব লাইভ'],
+    'title' => ['en' => 'Test Workshop Session', 'bn' => 'টেস্ট ওয়ার্কশপ সেশন'],
     'topic' => ['en' => 'Credit Readiness', 'bn' => 'ক্রেডিট প্রস্তুতি'],
     'summary' => ['en' => 'Interactive Loan Lab session', 'bn' => 'ইন্টারঅ্যাক্টিভ লোন ল্যাব সেশন'],
     'description' => ['en' => 'Full workshop details', 'bn' => 'সম্পূর্ণ ওয়ার্কশপ বিস্তারিত'],
