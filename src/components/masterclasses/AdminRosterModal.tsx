@@ -268,7 +268,7 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
         </div>
 
         {/* Roster Table Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3 sm:p-6">
           {loading ? (
             <LoadingBlock rows={4} />
           ) : !filtered.length ? (
@@ -278,8 +278,92 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
               <p className="text-meta">Try adjusting your search or status filter.</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-line">
-              <table className="w-full text-left text-meta">
+            <>
+              <div className="space-y-3 md:hidden">
+              {filtered.map((att) => (
+                <article key={att.id} className="min-w-0 rounded-xl border border-line bg-surface p-3">
+                  <div className="min-w-0">
+                    <p className="break-words font-semibold text-ink">{att.name}</p>
+                    <p className="break-words text-[0.75rem] text-slate">
+                      {att.businessName} · {att.email}
+                    </p>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-line pt-3 text-meta">
+                    <div className="min-w-0">
+                      <dt className="text-[0.6875rem] font-medium text-slate">Ticket / Ref</dt>
+                      <dd className="break-all font-mono text-[0.8125rem]">
+                        <span className="block font-bold text-ink">{att.ticketNumber || '—'}</span>
+                        <span className="text-[0.75rem] text-slate">{att.code}</span>
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-[0.6875rem] font-medium text-slate">Payment</dt>
+                      <dd className="mt-0.5">
+                        <span
+                          className={`inline-flex max-w-full flex-wrap items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${
+                            att.paymentStatus === 'paid'
+                              ? 'bg-ok-soft text-ok'
+                              : 'bg-warn-soft text-warn'
+                          }`}
+                        >
+                          {att.paymentStatus} · {formatMoney(att.amountPaid)}
+                        </span>
+                      </dd>
+                    </div>
+                    <div className="col-span-2 min-w-0">
+                      <dt className="text-[0.6875rem] font-medium text-slate">Status</dt>
+                      <dd className="mt-0.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium ${
+                            att.attendanceStatus === 'attended'
+                              ? 'bg-ok-soft text-ok'
+                              : att.attendanceStatus === 'no_show'
+                              ? 'bg-bad-soft text-bad'
+                              : 'bg-mist text-slate'
+                          }`}
+                        >
+                          {att.attendanceStatus === 'attended' ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3" /> Attended
+                            </>
+                          ) : att.attendanceStatus === 'no_show' ? (
+                            <>
+                              <UserX className="h-3 w-3" /> No-Show
+                            </>
+                          ) : (
+                            'Unmarked'
+                          )}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+                    {att.attendanceStatus !== 'attended' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<UserCheck className="h-3.5 w-3.5" />}
+                        onClick={() => handleRowCheckIn(att)}
+                        loading={actionBusy === att.id}
+                        disabled={!att.ticketNumber}
+                      >
+                        Check In
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-bad hover:bg-bad-soft"
+                      onClick={() => openRefundModal(att)}
+                    >
+                      Refund & Cancel
+                    </Button>
+                  </div>
+                </article>
+              ))}
+              </div>
+              <div className="hidden overflow-x-auto overscroll-x-contain rounded-xl border border-line md:block">
+                <table className="w-full min-w-[820px] text-left text-meta">
                 <thead className="border-b border-line bg-paper/80 font-semibold text-slate">
                   <tr>
                     <th className="px-4 py-3">Attendee</th>
@@ -293,12 +377,12 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                   {filtered.map((att) => (
                     <tr key={att.id} className="hover:bg-paper/30">
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-ink">{att.name}</p>
-                        <p className="text-[0.75rem] text-slate">
+                        <p className="break-words font-semibold text-ink">{att.name}</p>
+                        <p className="break-words text-[0.75rem] text-slate">
                           {att.businessName} · {att.email}
                         </p>
                       </td>
-                      <td className="px-4 py-3 font-mono text-[0.8125rem]">
+                      <td className="break-all px-4 py-3 font-mono text-[0.8125rem]">
                         <p className="font-bold text-ink">{att.ticketNumber || '—'}</p>
                         <p className="text-[0.75rem] text-slate">{att.code}</p>
                       </td>
@@ -337,7 +421,7 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1.5">
+                        <div className="flex flex-wrap justify-end gap-1.5">
                           {att.attendanceStatus !== 'attended' && (
                             <Button
                               size="sm"
@@ -363,8 +447,9 @@ export function AdminRosterModal({ masterclass, open, onClose }: AdminRosterModa
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+                </table>
+              </div>
+            </>
           )}
         </div>
 

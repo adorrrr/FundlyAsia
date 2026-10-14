@@ -147,7 +147,16 @@ final class MasterclassRepository
             if ($activeCount > 0) {
                 throw new HttpException(409, 'has_active_registrations', 'This masterclass has ' . $activeCount . ' active registration(s). Please refund and cancel all attendees before deleting.');
             }
-            $pdo->prepare('DELETE FROM registrations WHERE masterclass_id = ?')->execute([$id]);
+            $stReg = $pdo->prepare('SELECT id FROM registrations WHERE masterclass_id = ?');
+            $stReg->execute([$id]);
+            $regIds = $stReg->fetchAll(\PDO::FETCH_COLUMN);
+            if (!empty($regIds)) {
+                $inClause = implode(',', array_fill(0, count($regIds), '?'));
+                $pdo->prepare("DELETE FROM payment_submissions WHERE registration_id IN ($inClause)")->execute($regIds);
+                $pdo->prepare("DELETE FROM refunds WHERE registration_id IN ($inClause)")->execute($regIds);
+                $pdo->prepare("DELETE FROM tickets WHERE registration_id IN ($inClause)")->execute($regIds);
+                $pdo->prepare("DELETE FROM registrations WHERE id IN ($inClause)")->execute($regIds);
+            }
             $st = $pdo->prepare('DELETE FROM masterclasses WHERE id = ?');
             $st->execute([$id]);
             if ($st->rowCount() === 0) {
