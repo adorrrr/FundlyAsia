@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { CreditCard, DollarSign, RefreshCw, Ticket } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useOptionLabel } from '@/hooks/useOptions';
@@ -8,38 +9,48 @@ import { masterclassService, registrationService } from '@/services';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
-import { useToast } from '@/components/ui/Toast';
 import { SessionSummary } from '@/components/masterclasses/SessionSummary';
 import { CalendarActions } from '@/components/masterclasses/CalendarActions';
+import { TicketModal } from '@/components/masterclasses/TicketModal';
+import { RefundModal } from '@/components/masterclasses/RefundModal';
 
 export default function RegistrationDetailPage() {
   const { id = '' } = useParams();
   const { d, t, formatDate, formatMoney } = useI18n();
   const label = useOptionLabel();
-  const toast = useToast();
   const reg = useAsync(() => registrationService.get(id), [id]);
-  const mc = useAsync(async () => (reg.data ? masterclassService.get(reg.data.masterclassId) : undefined), [reg.data?.masterclassId]);
-  const [confirmRefund, setConfirmRefund] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const mc = useAsync(
+    async () => (reg.data ? masterclassService.get(reg.data.masterclassId) : undefined),
+    [reg.data?.masterclassId]
+  );
+
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
   useDocumentTitle(t(d.myreg.detailTitle, { id }));
 
   if (reg.loading || mc.loading) return <LoadingBlock rows={3} />;
-  if (!reg.data || !mc.data) return <EmptyState title={d.myreg.notFound} action={<Button to="/my-registrations" variant="secondary">{d.myreg.title}</Button>} />;
+  if (!reg.data || !mc.data) {
+    return (
+      <EmptyState
+        title={d.myreg.notFound}
+        action={
+          <Button to="/my-registrations" variant="secondary">
+            {d.myreg.title}
+          </Button>
+        }
+      />
+    );
+  }
+
   const r = reg.data;
   const m = mc.data;
-  const needsPayment = r.paymentStatus === 'pending' || r.paymentStatus === 'failed';
-  const canRefund = r.paymentStatus === 'paid' && r.status === 'confirmed' && m.status !== 'completed';
-
-  const requestRefund = async () => {
-    setBusy(true);
-    const updated = await registrationService.requestRefund(r.id);
-    reg.setData(updated);
-    setBusy(false);
-    setConfirmRefund(false);
-    toast(d.myreg.refundRequested, 'info');
-  };
+  const isPaid = r.paymentStatus === 'paid' && r.status === 'confirmed';
+  const isPendingPay = r.paymentStatus === 'pending';
+  const isPendingVerification = r.paymentStatus === 'pending_verification';
+  const isFailed = r.paymentStatus === 'failed';
+  const canRefund =
+    isPaid && m.status !== 'completed' && (r.amountPaid ?? r.amount) > (r.amountRefunded ?? 0);
 
   const rows: [string, string][] = [
     [d.auth.name, r.name],
@@ -48,7 +59,12 @@ export default function RegistrationDetailPage() {
     [d.profile.industry, label('industry', r.industry)],
     [d.profile.businessType, label('businessType', r.businessType)],
     [d.myreg.intent, label('intent', r.financingIntent)],
-    ...(r.financingIntent === 'yes' ? ([[d.reg.purpose, label('purpose', r.purpose)], [d.reg.amount, label('range', r.amountRange)]] as [string, string][]) : []),
+    ...(r.financingIntent === 'yes'
+      ? ([
+          [d.reg.purpose, label('purpose', r.purpose)],
+          [d.reg.amount, label('range', r.amountRange)],
+        ] as [string, string][])
+      : []),
   ];
 
   return (
@@ -58,28 +74,113 @@ export default function RegistrationDetailPage() {
         title={t(d.myreg.detailTitle, { id: r.id })}
         body={t(d.myreg.registeredOn, { date: formatDate(r.createdAt) })}
         meta={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={r.status} />
             {r.paymentStatus !== 'not_required' && <StatusBadge status={r.paymentStatus} />}
-          </>
+            {r.ticketNumber && (
+              <span className="rounded bg-paper px-2.5 py-0.5 font-mono text-meta font-bold text-ink">
+                Pass: {r.ticketNumber}
+              </span>
+            )}
+          </div>
         }
       />
+
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
         <div className="flex flex-col gap-6">
-          {needsPayment && (
-            <div className="surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          {/* Confirmed Entry Pass Banner */}
+          {isPaid && (
+            <div className="flex flex-col gap-4 rounded-xl border border-ok/30 bg-ok-soft/30 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
               <div>
-                <p className="text-card font-semibold">{d.myreg.payment}: {formatMoney(r.amount)}</p>
-                <p className="mt-1 text-body text-slate">{r.paymentStatus === 'failed' ? d.pay.failedBody : d.mc.paidNote}</p>
+                <span className="text-[0.6875rem] font-bold uppercase tracking-wider text-ok">
+                  Verified Registration
+                </span>
+                <p className="mt-0.5 text-card font-bold text-ink">
+                  Your Digital Ticket is Active
+                </p>
+                <p className="mt-1 text-meta text-slate">
+                  Ticket #{r.ticketNumber} is confirmed for venue entry.
+                </p>
               </div>
-              <Button to={`/registrations/${r.id}/payment`} className="flex-none">{d.myreg.payNow}</Button>
+              <Button
+                size="lg"
+                icon={<Ticket className="h-4 w-4" />}
+                onClick={() => setTicketModalOpen(true)}
+                className="flex-none"
+              >
+                View Digital Ticket
+              </Button>
             </div>
           )}
-          {r.paymentStatus === 'refund_requested' && <Notice tone="info">{d.myreg.refundRequested}</Notice>}
-          {r.paymentStatus === 'refunded' && <Notice tone="info" title={d.pay.refundedTitle}>{d.pay.refundedBody}</Notice>}
 
+          {/* Pending Payment State */}
+          {isPendingPay && (
+            <div className="surface flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div>
+                <p className="text-card font-semibold">
+                  {d.myreg.payment}: {formatMoney(r.amount)}
+                </p>
+                <p className="mt-1 text-body text-slate">{d.mc.paidNote}</p>
+              </div>
+              <Button
+                to={`/registrations/${r.id}/payment`}
+                icon={<CreditCard className="h-4 w-4" />}
+                className="flex-none"
+              >
+                {d.myreg.payNow}
+              </Button>
+            </div>
+          )}
+
+          {/* Verification in Progress State */}
+          {isPendingVerification && (
+            <Notice tone="warn" title="Payment Under Review">
+              Your transaction details have been submitted for verification. Fundly administration is
+              checking the deposit on our bank statement. Your entry pass will be generated once
+              approved.
+            </Notice>
+          )}
+
+          {/* Payment Failed / Rejected State */}
+          {isFailed && (
+            <div className="flex flex-col gap-3 rounded-xl border border-bad/30 bg-bad-soft/40 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-card font-bold text-bad">Payment Submission Rejected</p>
+                <p className="mt-1 text-meta text-slate">
+                  {r.latestSubmission?.rejectionReason
+                    ? `Reason: ${r.latestSubmission.rejectionReason}`
+                    : 'The submitted transaction ID could not be verified on our statement. Please check your transaction details and resubmit.'}
+                </p>
+              </div>
+              <Button
+                to={`/registrations/${r.id}/payment`}
+                icon={<RefreshCw className="h-4 w-4" />}
+                className="flex-none bg-bad hover:bg-bad/90"
+              >
+                Resubmit Payment
+              </Button>
+            </div>
+          )}
+
+          {r.paymentStatus === 'refund_requested' && (
+            <Notice tone="info" title="Refund Request Under Review">
+              You have submitted a refund request for this registration. Our finance team is reviewing
+              it and will disburse funds to your nominated account upon approval.
+            </Notice>
+          )}
+
+          {r.paymentStatus === 'refunded' && (
+            <Notice tone="info" title="Payment Refunded">
+              This registration has been cancelled and refunded. Refunded amount:{' '}
+              {formatMoney(r.amountRefunded || r.amount)}.
+            </Notice>
+          )}
+
+          {/* Registration Info */}
           <section className="surface p-5 sm:p-6" aria-labelledby="reg-details">
-            <h2 id="reg-details" className="mb-4 text-card font-semibold">{d.myreg.registration}</h2>
+            <h2 id="reg-details" className="mb-4 text-card font-semibold">
+              {d.myreg.registration}
+            </h2>
             <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
               {rows.map(([k, v]) => (
                 <div key={k}>
@@ -90,36 +191,49 @@ export default function RegistrationDetailPage() {
             </dl>
           </section>
 
-          {r.status === 'confirmed' && (
+          {/* Calendar Actions for Confirmed Attendee */}
+          {isPaid && (
             <section className="surface p-5 sm:p-6" aria-labelledby="cal">
-              <h2 id="cal" className="mb-4 text-card font-semibold">{d.confirm.addCalendar}</h2>
+              <h2 id="cal" className="mb-4 text-card font-semibold">
+                {d.confirm.addCalendar}
+              </h2>
               <CalendarActions m={m} regId={r.id} />
             </section>
           )}
 
+          {/* Refund Trigger Button */}
           {canRefund && (
-            <div>
-              <Button variant="ghost" className="text-bad hover:bg-bad-soft" onClick={() => setConfirmRefund(true)}>{d.myreg.requestRefund}</Button>
+            <div className="flex justify-start pt-2">
+              <Button
+                variant="ghost"
+                className="text-bad hover:bg-bad-soft"
+                icon={<DollarSign className="h-4 w-4" />}
+                onClick={() => setRefundModalOpen(true)}
+              >
+                Request Refund / Cancel Seat
+              </Button>
             </div>
           )}
         </div>
+
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <SessionSummary m={m} />
         </aside>
       </div>
 
-      <Dialog
-        open={confirmRefund}
-        onClose={() => setConfirmRefund(false)}
-        title={d.myreg.refundConfirmTitle}
-        description={d.myreg.refundConfirmBody}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirmRefund(false)}>{d.common.cancel}</Button>
-            <Button variant="danger" loading={busy} onClick={requestRefund}>{d.myreg.requestRefund}</Button>
-          </>
-        }
+      {/* Digital Ticket Modal */}
+      <TicketModal
+        registrationId={r.id}
+        open={ticketModalOpen}
+        onClose={() => setTicketModalOpen(false)}
+      />
+
+      {/* Refund Request Modal */}
+      <RefundModal
+        registration={r}
+        open={refundModalOpen}
+        onClose={() => setRefundModalOpen(false)}
+        onSuccess={() => reg.reload()}
       />
     </div>
   );

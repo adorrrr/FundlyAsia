@@ -1,11 +1,29 @@
-import { useMemo, useState } from 'react';
-import { Download, Settings2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CheckCircle2,
+  DollarSign,
+  Download,
+  Eye,
+  RefreshCw,
+  Settings2,
+  ShieldCheck,
+  Ticket,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { masterclassService, registrationService } from '@/services';
-import type { PaymentStatus, Registration, RegistrationStatus } from '@/types';
-import { PageHeader, SectionTitle } from '@/components/ui/PageHeader';
+import { manualPaymentApi } from '@/services/api/manualPaymentApi';
+import type {
+  PaymentStatus,
+  PaymentSubmission,
+  RefundRecord,
+  Registration,
+  RegistrationStatus,
+} from '@/types';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
 import { FilterPills, SearchInput } from '@/components/ui/SearchInput';
 import { SelectField, TextField } from '@/components/ui/Field';
@@ -16,53 +34,126 @@ import { EmptyState, ErrorState, LoadingBlock, Notice } from '@/components/ui/Fe
 import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/utils/csv';
 import { isBlank } from '@/utils/validation';
+import { TicketModal } from '@/components/masterclasses/TicketModal';
 
-const PAYMENT: PaymentStatus[] = ['not_required', 'pending', 'paid', 'failed', 'refund_requested', 'refunded'];
+type ActiveTab = 'registrations' | 'verifications' | 'refunds';
+
+const PAYMENT: PaymentStatus[] = [
+  'not_required',
+  'pending',
+  'pending_verification',
+  'paid',
+  'failed',
+  'refund_requested',
+  'partially_refunded',
+  'refunded',
+];
 
 export default function AdminRegistrationsPage() {
   const { d, l, t, formatDate, formatMoney } = useI18n();
   const a = d.admin.regs;
-  useDocumentTitle(a.title);
+  useDocumentTitle('Registration & Payment Management');
   const toast = useToast();
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>('registrations');
+
+  // Registrations & Masterclasses state
   const regs = useAsync(() => registrationService.listAll(), []);
   const classes = useAsync(() => masterclassService.listAll(), []);
+
+  // Submissions state
+  const [submissions, setSubmissions] = useState<PaymentSubmission[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+
+  // Refunds state
+  const [refunds, setRefunds] = useState<RefundRecord[]>([]);
+  const [refundsLoading, setRefundsLoading] = useState(false);
+
+  // Filter states
   const [q, setQ] = useState('');
   const [mc, setMc] = useState('');
   const [pay, setPay] = useState<'all' | PaymentStatus>('all');
+
+  // Modals & Action states
   const [managing, setManaging] = useState<Registration | null>(null);
-  const [correction, setCorrection] = useState<{ status: PaymentStatus; reason: string; error?: string }>({ status: 'paid', reason: '' });
+  const [ticketModalReg, setTicketModalReg] = useState<string | null>(null);
+  const [correction, setCorrection] = useState<{ status: PaymentStatus; reason: string; error?: string }>({
+    status: 'paid',
+    reason: '',
+  });
+  const [cancelModalReg, setCancelModalReg] = useState<Registration | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+
+  // Payment Verification Modals
+  const [rejectSubModal, setRejectSubModal] = useState<PaymentSubmission | null>(null);
+  const [rejectSubReason, setRejectSubReason] = useState('');
+  const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(null);
+
+  // Refund Management Modals
+  const [rejectRefModal, setRejectRefModal] = useState<RefundRecord | null>(null);
+  const [rejectRefReason, setRejectRefReason] = useState('');
+  const [completeRefModal, setCompleteRefModal] = useState<RefundRecord | null>(null);
+  const [disbursementTrxId, setDisbursementTrxId] = useState('');
+  const [disbursementNotes, setDisbursementNotes] = useState('');
+
   const [busy, setBusy] = useState(false);
 
+  const fetchSubmissions = useCallback(() => {
+    setSubmissionsLoading(true);
+    manualPaymentApi
+      .listPaymentSubmissions()
+      .then(setSubmissions)
+      .catch((err) => toast(err instanceof Error ? err.message : 'Failed to load submissions.', 'error'))
+      .finally(() => setSubmissionsLoading(false));
+  }, [toast]);
+
+  const fetchRefunds = useCallback(() => {
+    setRefundsLoading(true);
+    manualPaymentApi
+      .listRefunds()
+      .then(setRefunds)
+      .catch((err) => toast(err instanceof Error ? err.message : 'Failed to load refunds.', 'error'))
+      .finally(() => setRefundsLoading(false));
+  }, [toast]);
+
+  useEffect(() => {
+    fetchSubmissions();
+    fetchRefunds();
+  }, [fetchSubmissions, fetchRefunds]);
+
   const titleOf = (id: string) => l(classes.data?.find((m) => m.id === id)?.title);
+
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase();
     return (regs.data ?? []).filter(
-      (r) => (!query || [r.name, r.businessName, r.email, r.id].some((v) => v.toLowerCase().includes(query))) && (!mc || r.masterclassId === mc) && (pay === 'all' || r.paymentStatus === pay),
+      (r) =>
+        (!query ||
+          [r.name, r.businessName, r.email, r.id, r.ticketNumber || ''].some((v) =>
+            v.toLowerCase().includes(query)
+          )) &&
+        (!mc || r.masterclassId === mc) &&
+        (pay === 'all' || r.paymentStatus === pay)
     );
   }, [regs.data, q, mc, pay]);
-  const refundQueue = (regs.data ?? []).filter((r) => r.paymentStatus === 'refund_requested');
+
+  const pendingSubCount = submissions.filter((s) => s.status === 'pending').length;
+  const pendingRefCount = refunds.filter((r) => r.status === 'pending' || r.status === 'processing').length;
 
   const replace = (r: Registration) => {
     regs.setData((xs) => xs?.map((x) => (x.id === r.id ? r : x)));
     setManaging((m) => (m && m.id === r.id ? r : m));
   };
-  const setStatus = async (r: Registration, s: RegistrationStatus) => {
+
+  const handleStatusChange = async (r: Registration, s: RegistrationStatus) => {
     try {
       replace(await registrationService.setStatus(r.id, s));
-      toast(a.updated);
+      toast('Registration status updated.');
     } catch (err: unknown) {
       toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
     }
   };
-  const setPayment = async (r: Registration, s: PaymentStatus, reason?: string) => {
-    try {
-      replace(await registrationService.setPaymentStatus(r.id, s, reason));
-      toast(a.updated);
-    } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
-    }
-  };
-  const applyCorrection = async () => {
+
+  const handlePaymentCorrection = async () => {
     if (!managing) return;
     if (isBlank(correction.reason)) {
       setCorrection((c) => ({ ...c, error: d.validation.required }));
@@ -71,11 +162,122 @@ export default function AdminRegistrationsPage() {
     }
     setBusy(true);
     try {
-      await setPayment(managing, correction.status, correction.reason);
+      replace(await registrationService.setPaymentStatus(managing.id, correction.status, correction.reason));
       setCorrection({ status: 'paid', reason: '' });
       setManaging(null);
+      toast('Payment status corrected.');
     } catch (err: unknown) {
       toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdminCancel = async () => {
+    if (!cancelModalReg || !cancelReason.trim()) {
+      toast('A cancellation reason is required.', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const updated = await manualPaymentApi.adminCancelRegistration(cancelModalReg.id, cancelReason.trim());
+      replace(updated);
+      setCancelModalReg(null);
+      setCancelReason('');
+      toast('Registration cancelled and seat released.', 'success');
+      regs.reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Cancellation failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Payment Verification Actions
+  const handleApproveSubmission = async (sub: PaymentSubmission) => {
+    setBusy(true);
+    try {
+      const res = await manualPaymentApi.approvePaymentSubmission(sub.id);
+      toast(`Submission approved! Ticket #${res.ticketNumber} generated.`, 'success');
+      fetchSubmissions();
+      regs.reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Approval failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRejectSubmission = async () => {
+    if (!rejectSubModal || !rejectSubReason.trim()) {
+      toast('Please enter a rejection reason.', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      await manualPaymentApi.rejectPaymentSubmission(rejectSubModal.id, rejectSubReason.trim());
+      toast('Submission rejected.', 'info');
+      setRejectSubModal(null);
+      setRejectSubReason('');
+      fetchSubmissions();
+      regs.reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Rejection failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Refund Actions
+  const handleApproveRefund = async (refRecord: RefundRecord) => {
+    setBusy(true);
+    try {
+      await manualPaymentApi.approveRefund(refRecord.id, 'Approved to processing');
+      toast('Refund request moved to processing.', 'success');
+      fetchRefunds();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Approval failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRejectRefund = async () => {
+    if (!rejectRefModal || !rejectRefReason.trim()) {
+      toast('Please enter a rejection reason.', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      await manualPaymentApi.rejectRefund(rejectRefModal.id, rejectRefReason.trim());
+      toast('Refund request rejected.', 'info');
+      setRejectRefModal(null);
+      setRejectRefReason('');
+      fetchRefunds();
+      regs.reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Rejection failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCompleteRefund = async () => {
+    if (!completeRefModal) return;
+    setBusy(true);
+    try {
+      await manualPaymentApi.completeRefund(completeRefModal.id, {
+        trxId: disbursementTrxId.trim() || undefined,
+        notes: disbursementNotes.trim() || undefined,
+      });
+      toast('Refund disbursement completed and recorded.', 'success');
+      setCompleteRefModal(null);
+      setDisbursementTrxId('');
+      setDisbursementNotes('');
+      fetchRefunds();
+      regs.reload();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Disbursement recording failed.', 'error');
     } finally {
       setBusy(false);
     }
@@ -84,98 +286,790 @@ export default function AdminRegistrationsPage() {
   const exportCsv = () => {
     downloadCsv(
       'fundly-registrations.csv',
-      rows.map((r) => ({ registration_id: r.id, name: r.name, business: r.businessName, email: r.email, masterclass: titleOf(r.masterclassId), registration_status: r.status, payment_status: r.paymentStatus, amount_bdt: r.amount, financing_intent: r.financingIntent, purpose: r.purpose ?? '', amount_range: r.amountRange ?? '', created_at: r.createdAt })),
+      rows.map((r) => ({
+        registration_id: r.id,
+        ticket_number: r.ticketNumber || '',
+        name: r.name,
+        business: r.businessName,
+        email: r.email,
+        masterclass: titleOf(r.masterclassId),
+        registration_status: r.status,
+        payment_status: r.paymentStatus,
+        amount_bdt: r.amount,
+        amount_paid: r.amountPaid || 0,
+        amount_refunded: r.amountRefunded || 0,
+        attendance: r.attendanceStatus || 'unmarked',
+        created_at: r.createdAt,
+      }))
     );
     toast(a.exported, 'info');
   };
 
-  if (regs.loading || classes.loading) return <LoadingBlock rows={5} />;
-
   return (
     <div>
-      <PageHeader title={a.title} body={a.body} actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={exportCsv} disabled={!rows.length}>{d.common.exportCsv}</Button>} />
+      <PageHeader
+        title="Masterclass Registrations & Revenue"
+        body="Verify manual Bangla QR payments, issue digital tickets, manage attendee records, and process refund requests."
+        actions={
+          <Button
+            variant="secondary"
+            icon={<Download className="h-4 w-4" />}
+            onClick={exportCsv}
+            disabled={!rows.length}
+          >
+            {d.common.exportCsv}
+          </Button>
+        }
+      />
 
-      <section className="mb-8" aria-labelledby="rq">
-        <SectionTitle as="h2"><span id="rq">{a.refundQueue}</span></SectionTitle>
-        {refundQueue.length ? (
-          <ul className="flex flex-col gap-2">
-            {refundQueue.map((r) => (
-              <li key={r.id} className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="font-semibold">{r.name} · {r.businessName}</p>
-                  <p className="tnum text-meta text-slate">{r.id} · {titleOf(r.masterclassId)} · {formatMoney(r.amount)}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setPayment(r, 'refunded')}>{a.approveRefund}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => setPayment(r, 'paid')}>{a.rejectRefund}</Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-body text-slate">{a.refundEmpty}</p>
-        )}
-      </section>
+      {/* Primary Tab Navigation */}
+      <div className="mb-6 flex border-b border-line">
+        <button
+          onClick={() => setActiveTab('registrations')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-body font-semibold transition-colors ${
+            activeTab === 'registrations'
+              ? 'border-brand-deep text-brand-deep'
+              : 'border-transparent text-slate hover:text-ink'
+          }`}
+        >
+          <span>All Registrations</span>
+          <span className="rounded-full bg-mist px-2 py-0.5 text-[0.75rem] font-bold text-slate">
+            {regs.data?.length ?? 0}
+          </span>
+        </button>
 
-      <div className="mb-4 flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <SearchInput value={q} onChange={setQ} placeholder={a.search} />
-          <SelectField label={<span className="sr-only">{a.masterclass}</span>} value={mc} onChange={(e) => setMc(e.target.value)} placeholder={`${a.masterclass}: ${d.common.all}`} options={(classes.data ?? []).map((m) => ({ value: m.id, label: l(m.title) }))} className="sm:w-64" />
-        </div>
-        <FilterPills label={a.payment} value={pay} onChange={setPay} options={[{ value: 'all', label: d.common.all }, ...PAYMENT.map((p) => ({ value: p, label: d.status[p] }))]} />
+        <button
+          onClick={() => setActiveTab('verifications')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-body font-semibold transition-colors ${
+            activeTab === 'verifications'
+              ? 'border-brand-deep text-brand-deep'
+              : 'border-transparent text-slate hover:text-ink'
+          }`}
+        >
+          <span>Payment Verification Queue</span>
+          {pendingSubCount > 0 ? (
+            <span className="rounded-full bg-warn px-2 py-0.5 text-[0.75rem] font-bold text-white animate-pulse">
+              {pendingSubCount}
+            </span>
+          ) : (
+            <span className="rounded-full bg-mist px-2 py-0.5 text-[0.75rem] font-bold text-slate">
+              {submissions.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('refunds')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-body font-semibold transition-colors ${
+            activeTab === 'refunds'
+              ? 'border-brand-deep text-brand-deep'
+              : 'border-transparent text-slate hover:text-ink'
+          }`}
+        >
+          <span>Refund Requests</span>
+          {pendingRefCount > 0 ? (
+            <span className="rounded-full bg-bad px-2 py-0.5 text-[0.75rem] font-bold text-white">
+              {pendingRefCount}
+            </span>
+          ) : (
+            <span className="rounded-full bg-mist px-2 py-0.5 text-[0.75rem] font-bold text-slate">
+              {refunds.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {regs.loading || classes.loading ? (
-        <LoadingBlock rows={5} />
-      ) : regs.error || classes.error ? (
-        <ErrorState onRetry={() => { regs.reload(); classes.reload(); }} />
-      ) : (
-        <DataTable<Registration>
-          caption={a.title}
-          rows={rows}
-          rowKey={(r) => r.id}
-          empty={<EmptyState title={d.common.noResults} action={<Button variant="secondary" onClick={() => { setQ(''); setMc(''); setPay('all'); }}>{d.common.clearFilters}</Button>} />}
-          columns={[
-            { key: 'n', header: a.name, cell: (r) => <div><p className="font-semibold">{r.name}</p><p className="tnum text-meta text-slate">{r.id}</p></div> },
-            { key: 'b', header: d.admin.smes.business, cell: (r) => <div><p>{r.businessName}</p><p className="text-meta text-slate">{r.email}</p></div>, hideBelow: 'lg' },
-            { key: 'm', header: a.masterclass, cell: (r) => <div><p>{titleOf(r.masterclassId)}</p><p className="text-meta text-slate">{formatDate(r.createdAt)}</p></div>, hideBelow: 'md' },
-            { key: 'r', header: a.registration, cell: (r) => <StatusBadge status={r.status} /> },
-            { key: 'p', header: a.payment, cell: (r) => <StatusBadge status={r.paymentStatus} /> },
-            { key: 'x', header: <span className="sr-only">{d.common.actions}</span>, align: 'right', cell: (r) => <Button size="sm" variant="ghost" icon={<Settings2 className="h-3.5 w-3.5" />} onClick={() => setManaging(r)} aria-label={`${d.common.edit} ${r.id}`}>{d.common.edit}</Button> },
-          ]}
-        />
+      {/* TAB 1: ALL REGISTRATIONS */}
+      {activeTab === 'registrations' && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <SearchInput value={q} onChange={setQ} placeholder="Search name, email, code, ticket..." />
+              <SelectField
+                label={<span className="sr-only">{a.masterclass}</span>}
+                value={mc}
+                onChange={(e) => setMc(e.target.value)}
+                placeholder={`${a.masterclass}: ${d.common.all}`}
+                options={(classes.data ?? []).map((m) => ({ value: m.id, label: l(m.title) }))}
+                className="sm:w-64"
+              />
+            </div>
+            <FilterPills
+              label={a.payment}
+              value={pay}
+              onChange={setPay}
+              options={[
+                { value: 'all', label: d.common.all },
+                ...PAYMENT.map((p) => ({ value: p, label: d.status[p] })),
+              ]}
+            />
+          </div>
+
+          {regs.loading || classes.loading ? (
+            <LoadingBlock rows={5} />
+          ) : regs.error || classes.error ? (
+            <ErrorState
+              onRetry={() => {
+                regs.reload();
+                classes.reload();
+              }}
+            />
+          ) : (
+            <DataTable<Registration>
+              caption={a.title}
+              rows={rows}
+              rowKey={(r) => r.id}
+              empty={
+                <EmptyState
+                  title={d.common.noResults}
+                  action={
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setQ('');
+                        setMc('');
+                        setPay('all');
+                      }}
+                    >
+                      {d.common.clearFilters}
+                    </Button>
+                  }
+                />
+              }
+              columns={[
+                {
+                  key: 'n',
+                  header: a.name,
+                  cell: (r) => (
+                    <div>
+                      <p className="font-semibold text-ink">{r.name}</p>
+                      <p className="tnum font-mono text-meta text-slate">{r.id}</p>
+                      {r.ticketNumber && (
+                        <p className="font-mono text-[0.6875rem] font-bold text-brand-deep">
+                          Pass: {r.ticketNumber}
+                        </p>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'b',
+                  header: 'Business',
+                  cell: (r) => (
+                    <div>
+                      <p className="font-medium text-ink">{r.businessName}</p>
+                      <p className="text-meta text-slate">{r.email}</p>
+                    </div>
+                  ),
+                  hideBelow: 'lg',
+                },
+                {
+                  key: 'm',
+                  header: a.masterclass,
+                  cell: (r) => (
+                    <div>
+                      <p className="font-medium text-ink">{titleOf(r.masterclassId)}</p>
+                      <p className="text-meta text-slate">{formatDate(r.createdAt)}</p>
+                    </div>
+                  ),
+                  hideBelow: 'md',
+                },
+                {
+                  key: 'r',
+                  header: 'Registration',
+                  cell: (r) => <StatusBadge status={r.status} />,
+                },
+                {
+                  key: 'p',
+                  header: 'Payment Status',
+                  cell: (r) => (
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusBadge status={r.paymentStatus} />
+                      <span className="tnum text-[0.75rem] font-bold text-ink">
+                        {formatMoney(r.amountPaid ?? r.amount)}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'x',
+                  header: <span className="sr-only">{d.common.actions}</span>,
+                  align: 'right',
+                  cell: (r) => (
+                    <div className="flex justify-end gap-1.5">
+                      {r.ticketNumber && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          icon={<Ticket className="h-3.5 w-3.5" />}
+                          onClick={() => setTicketModalReg(r.id)}
+                          aria-label="View Ticket"
+                        >
+                          Pass
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<Settings2 className="h-3.5 w-3.5" />}
+                        onClick={() => setManaging(r)}
+                      >
+                        Manage
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          )}
+        </div>
       )}
 
-      <Dialog open={!!managing} onClose={() => setManaging(null)} title={managing?.id ?? ''} description={managing ? `${managing.name} · ${titleOf(managing.masterclassId)}` : undefined} size="md">
+      {/* TAB 2: PAYMENT VERIFICATION QUEUE */}
+      {activeTab === 'verifications' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-body text-slate">
+              Match the submitted Transaction ID and Sender Mobile with your bKash/Nagad/Bank
+              statement. Approving will automatically confirm the seat and issue a digital ticket.
+            </p>
+            <Button size="sm" variant="secondary" icon={<RefreshCw className="h-3.5 w-3.5" />} onClick={fetchSubmissions}>
+              Refresh Queue
+            </Button>
+          </div>
+
+          {submissionsLoading ? (
+            <LoadingBlock rows={4} />
+          ) : !submissions.length ? (
+            <EmptyState
+              icon={<ShieldCheck className="h-8 w-8 text-ok" />}
+              title="No Payment Submissions"
+              body="No attendees have submitted manual payments for verification yet."
+            />
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+              <table className="w-full text-left text-meta">
+                <thead className="border-b border-line bg-paper/80 font-semibold text-slate">
+                  <tr>
+                    <th className="px-4 py-3">Attendee / Ref</th>
+                    <th className="px-4 py-3">Masterclass</th>
+                    <th className="px-4 py-3">Method & Sender</th>
+                    <th className="px-4 py-3">TrxID & Amount</th>
+                    <th className="px-4 py-3">Receipt</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {submissions.map((sub) => {
+                    const isPending = sub.status === 'pending';
+                    return (
+                      <tr key={sub.id} className="hover:bg-paper/40">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-ink">{sub.attendeeName}</p>
+                          <p className="tnum font-mono text-[0.75rem] text-slate">{sub.registrationCode}</p>
+                          <p className="text-[0.75rem] text-slate">{sub.businessName}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-ink truncate max-w-[180px]">{sub.masterclassTitle}</p>
+                          <p className="text-[0.75rem] text-slate">{formatDate(sub.createdAt)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="rounded bg-brand-soft px-2 py-0.5 font-bold uppercase text-brand-deep text-[0.6875rem]">
+                            {sub.paymentMethod}
+                          </span>
+                          <p className="font-mono font-medium text-ink mt-1">{sub.senderAccount}</p>
+                        </td>
+                        <td className="px-4 py-3 font-mono">
+                          <p className="font-bold text-ink">{sub.trxId}</p>
+                          <p className="text-body font-bold text-ok">{formatMoney(sub.amount)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          {sub.receiptPath ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewReceiptUrl(sub.receiptPath!)}
+                              className="inline-flex items-center gap-1 rounded bg-paper px-2 py-1 text-[0.75rem] font-semibold text-brand hover:underline"
+                            >
+                              <Eye className="h-3 w-3" /> View
+                            </button>
+                          ) : (
+                            <span className="text-[0.75rem] text-slate">None</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold ${
+                              sub.status === 'approved'
+                                ? 'bg-ok-soft text-ok'
+                                : sub.status === 'rejected'
+                                ? 'bg-bad-soft text-bad'
+                                : 'bg-warn-soft text-warn'
+                            }`}
+                          >
+                            {sub.status === 'approved'
+                              ? 'Approved'
+                              : sub.status === 'rejected'
+                              ? 'Rejected'
+                              : 'Pending Verification'}
+                          </span>
+                          {sub.rejectionReason && (
+                            <p className="mt-1 text-[0.6875rem] text-bad max-w-[160px] truncate" title={sub.rejectionReason}>
+                              {sub.rejectionReason}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {isPending ? (
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveSubmission(sub)}
+                                loading={busy}
+                                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="text-bad hover:bg-bad-soft"
+                                onClick={() => setRejectSubModal(sub)}
+                                icon={<XCircle className="h-3.5 w-3.5" />}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-[0.75rem] text-slate">
+                              Processed {sub.verifiedByName ? `by ${sub.verifiedByName}` : ''}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: REFUND REQUESTS */}
+      {activeTab === 'refunds' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-body text-slate">
+              Review cancellation and refund requests from attendees. Approve to processing, then
+              manually send payment and record the disbursement TrxID to complete.
+            </p>
+            <Button size="sm" variant="secondary" icon={<RefreshCw className="h-3.5 w-3.5" />} onClick={fetchRefunds}>
+              Refresh Refunds
+            </Button>
+          </div>
+
+          {refundsLoading ? (
+            <LoadingBlock rows={4} />
+          ) : !refunds.length ? (
+            <EmptyState
+              icon={<DollarSign className="h-8 w-8 text-slate" />}
+              title="No Refund Requests"
+              body="No attendees have requested a refund."
+            />
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+              <table className="w-full text-left text-meta">
+                <thead className="border-b border-line bg-paper/80 font-semibold text-slate">
+                  <tr>
+                    <th className="px-4 py-3">Requester / Ref</th>
+                    <th className="px-4 py-3">Masterclass</th>
+                    <th className="px-4 py-3">Amount Requested</th>
+                    <th className="px-4 py-3">Disbursement Destination</th>
+                    <th className="px-4 py-3">Reason</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {refunds.map((refRecord) => {
+                    const isPending = refRecord.status === 'pending';
+                    const isProcessing = refRecord.status === 'processing';
+                    return (
+                      <tr key={refRecord.id} className="hover:bg-paper/40">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-ink">{refRecord.attendeeName}</p>
+                          <p className="font-mono text-[0.75rem] text-slate">{refRecord.registrationCode}</p>
+                          <p className="text-[0.75rem] text-slate">{refRecord.businessName}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-ink truncate max-w-[160px]">{refRecord.masterclassTitle}</p>
+                          <p className="text-[0.75rem] text-slate">{formatDate(refRecord.createdAt)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-body font-bold text-ink">{formatMoney(refRecord.amount)}</p>
+                          <p className="text-[0.6875rem] text-slate">
+                            Paid: {formatMoney(refRecord.amountPaid)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="rounded bg-paper px-2 py-0.5 font-bold uppercase text-[0.6875rem]">
+                            {refRecord.refundMethod}
+                          </span>
+                          <p className="font-mono font-medium text-ink mt-0.5">{refRecord.destinationAccount}</p>
+                          {refRecord.accountHolderName && (
+                            <p className="text-[0.6875rem] text-slate">{refRecord.accountHolderName}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="max-w-[180px] text-[0.75rem] text-slate leading-relaxed truncate" title={refRecord.reason}>
+                            {refRecord.reason}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-bold ${
+                              refRecord.status === 'completed'
+                                ? 'bg-ok-soft text-ok'
+                                : refRecord.status === 'rejected'
+                                ? 'bg-bad-soft text-bad'
+                                : refRecord.status === 'processing'
+                                ? 'bg-brand-soft text-brand-deep'
+                                : 'bg-warn-soft text-warn'
+                            }`}
+                          >
+                            {refRecord.status === 'completed'
+                              ? 'Disbursed'
+                              : refRecord.status === 'processing'
+                              ? 'Processing'
+                              : refRecord.status === 'rejected'
+                              ? 'Rejected'
+                              : 'Pending Review'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-1.5">
+                            {isPending && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleApproveRefund(refRecord)}
+                                  loading={busy}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-bad hover:bg-bad-soft"
+                                  onClick={() => setRejectRefModal(refRecord)}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {isProcessing && (
+                              <Button
+                                size="sm"
+                                onClick={() => setCompleteRefModal(refRecord)}
+                                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                              >
+                                Record Disbursement
+                              </Button>
+                            )}
+                            {refRecord.status === 'completed' && (
+                              <span className="font-mono text-[0.75rem] text-slate">
+                                Trx: {refRecord.providerRefundId || 'Manual'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MANAGE REGISTRATION MODAL */}
+      <Dialog
+        open={!!managing}
+        onClose={() => setManaging(null)}
+        title={managing?.id ?? ''}
+        description={managing ? `${managing.name} · ${titleOf(managing.masterclassId)}` : undefined}
+        size="md"
+      >
         {managing && (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-wrap gap-2"><StatusBadge status={managing.status} /><StatusBadge status={managing.paymentStatus} /></div>
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge status={managing.status} />
+              <StatusBadge status={managing.paymentStatus} />
+              {managing.ticketNumber && (
+                <span className="font-mono text-meta font-bold text-brand-deep">
+                  Pass: {managing.ticketNumber}
+                </span>
+              )}
+            </div>
+
+            {/* Attendance quick toggle */}
             <div>
-              <p className="mb-2 text-meta font-semibold">{d.myreg.registration}</p>
+              <p className="mb-2 text-meta font-semibold">Attendance Management</p>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" disabled={managing.status === 'attended'} onClick={() => setStatus(managing, 'attended')}>{a.markAttended}</Button>
-                <Button size="sm" variant="secondary" disabled={managing.status === 'no_show'} onClick={() => setStatus(managing, 'no_show')}>{a.markNoShow}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={managing.status === 'attended'}
+                  onClick={() => handleStatusChange(managing, 'attended')}
+                >
+                  Mark Attended
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={managing.status === 'no_show'}
+                  onClick={() => handleStatusChange(managing, 'no_show')}
+                >
+                  Mark No-Show
+                </Button>
               </div>
             </div>
-            {managing.paymentStatus === 'refund_requested' && (
-              <div>
-                <p className="mb-2 text-meta font-semibold">{a.refundQueue}</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => setPayment(managing, 'refunded')}>{a.approveRefund}</Button>
-                  <Button size="sm" variant="secondary" onClick={() => setPayment(managing, 'paid')}>{a.rejectRefund}</Button>
-                </div>
+
+            {/* Admin Cancel Registration */}
+            {managing.status !== 'cancelled' && (
+              <div className="rounded-xl border border-bad/30 bg-bad-soft/30 p-4">
+                <p className="text-meta font-bold text-bad">Cancel Registration & Release Seat</p>
+                <p className="mt-1 text-meta text-slate">
+                  This will cancel the attendee’s seat reservation and invalidate their digital ticket.
+                </p>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  className="mt-3"
+                  onClick={() => {
+                    setCancelModalReg(managing);
+                    setManaging(null);
+                  }}
+                >
+                  Cancel Registration
+                </Button>
               </div>
             )}
+
+            {/* Payment status manual correction */}
             <div className="flex flex-col gap-3 rounded-card bg-paper p-4">
               <p className="text-meta font-semibold">{t(a.correctTitle, { id: managing.id })}</p>
               <Notice tone="info">{a.correctBody}</Notice>
-              <SelectField label={a.payment} value={correction.status} onChange={(e) => setCorrection((c) => ({ ...c, status: e.target.value as PaymentStatus }))} options={PAYMENT.map((p) => ({ value: p, label: d.status[p] }))} />
-              <TextField label={a.reason} placeholder={a.reasonPlaceholder} value={correction.reason} onChange={(e) => setCorrection((c) => ({ ...c, reason: e.target.value, error: undefined }))} error={correction.error} required />
-              <Button className="self-start" onClick={applyCorrection} loading={busy}>{a.apply}</Button>
+              <SelectField
+                label={a.payment}
+                value={correction.status}
+                onChange={(e) =>
+                  setCorrection((c) => ({ ...c, status: e.target.value as PaymentStatus }))
+                }
+                options={PAYMENT.map((p) => ({ value: p, label: d.status[p] }))}
+              />
+              <TextField
+                label={a.reason}
+                placeholder={a.reasonPlaceholder}
+                value={correction.reason}
+                onChange={(e) =>
+                  setCorrection((c) => ({ ...c, reason: e.target.value, error: undefined }))
+                }
+                error={correction.error}
+                required
+              />
+              <Button className="self-start" onClick={handlePaymentCorrection} loading={busy}>
+                {a.apply}
+              </Button>
             </div>
           </div>
         )}
       </Dialog>
+
+      {/* ADMIN CANCEL CONFIRMATION MODAL */}
+      <Dialog
+        open={!!cancelModalReg}
+        onClose={() => setCancelModalReg(null)}
+        title="Confirm Administrative Cancellation"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCancelModalReg(null)} disabled={busy}>
+              Keep Registration
+            </Button>
+            <Button variant="danger" onClick={handleAdminCancel} loading={busy}>
+              Confirm Cancellation
+            </Button>
+          </>
+        }
+      >
+        {cancelModalReg && (
+          <div className="space-y-4">
+            <p className="text-body text-slate">
+              Are you sure you want to cancel the registration for{' '}
+              <strong>{cancelModalReg.name}</strong> ({cancelModalReg.id})?
+            </p>
+            <TextField
+              label="Cancellation Reason (Required)"
+              placeholder="e.g. Requested by user via phone / Seat duplicate"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              required
+            />
+          </div>
+        )}
+      </Dialog>
+
+      {/* REJECT SUBMISSION MODAL */}
+      <Dialog
+        open={!!rejectSubModal}
+        onClose={() => setRejectSubModal(null)}
+        title="Reject Payment Submission"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRejectSubModal(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleRejectSubmission} loading={busy}>
+              Reject Submission
+            </Button>
+          </>
+        }
+      >
+        {rejectSubModal && (
+          <div className="space-y-4">
+            <p className="text-body text-slate">
+              State the reason this submission is rejected. The attendee will see this message and be
+              allowed to resubmit.
+            </p>
+            <TextField
+              label="Rejection Reason"
+              placeholder="e.g. Transaction ID not found on statement / Amount mismatch"
+              value={rejectSubReason}
+              onChange={(e) => setRejectSubReason(e.target.value)}
+              required
+            />
+          </div>
+        )}
+      </Dialog>
+
+      {/* REJECT REFUND MODAL */}
+      <Dialog
+        open={!!rejectRefModal}
+        onClose={() => setRejectRefModal(null)}
+        title="Reject Refund Request"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRejectRefModal(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleRejectRefund} loading={busy}>
+              Reject Refund
+            </Button>
+          </>
+        }
+      >
+        {rejectRefModal && (
+          <div className="space-y-4">
+            <p className="text-body text-slate">
+              Please enter the reason for rejecting this refund request.
+            </p>
+            <TextField
+              label="Reason for Rejection"
+              placeholder="e.g. Cancellation requested after the deadline"
+              value={rejectRefReason}
+              onChange={(e) => setRejectRefReason(e.target.value)}
+              required
+            />
+          </div>
+        )}
+      </Dialog>
+
+      {/* COMPLETE REFUND DISBURSEMENT MODAL */}
+      <Dialog
+        open={!!completeRefModal}
+        onClose={() => setCompleteRefModal(null)}
+        title="Record Refund Disbursement"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCompleteRefModal(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={handleCompleteRefund} loading={busy}>
+              Confirm Disbursement
+            </Button>
+          </>
+        }
+      >
+        {completeRefModal && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-paper p-3 text-meta text-slate">
+              <p>
+                <strong>Destination:</strong> {completeRefModal.refundMethod.toUpperCase()} –{' '}
+                {completeRefModal.destinationAccount}
+              </p>
+              <p className="mt-1">
+                <strong>Amount:</strong> {formatMoney(completeRefModal.amount)}
+              </p>
+            </div>
+            <TextField
+              label="Disbursement Transaction ID (Optional)"
+              placeholder="e.g. Payout TrxID from bKash / Bank"
+              value={disbursementTrxId}
+              onChange={(e) => setDisbursementTrxId(e.target.value)}
+            />
+            <TextField
+              label="Disbursement Notes"
+              placeholder="e.g. Sent via corporate merchant wallet"
+              value={disbursementNotes}
+              onChange={(e) => setDisbursementNotes(e.target.value)}
+            />
+          </div>
+        )}
+      </Dialog>
+
+      {/* RECEIPT PREVIEW LIGHTBOX */}
+      {previewReceiptUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewReceiptUrl(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-2xl overflow-hidden rounded-xl bg-surface p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-card font-bold text-ink">Payment Receipt</span>
+              <button
+                onClick={() => setPreviewReceiptUrl(null)}
+                className="rounded-lg p-1 text-slate hover:bg-mist"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <img
+              src={previewReceiptUrl}
+              alt="Payment Receipt"
+              className="max-h-[75vh] w-auto rounded-lg object-contain mx-auto"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* DIGITAL TICKET MODAL */}
+      {ticketModalReg && (
+        <TicketModal
+          registrationId={ticketModalReg}
+          open={!!ticketModalReg}
+          onClose={() => setTicketModalReg(null)}
+        />
+      )}
     </div>
   );
 }

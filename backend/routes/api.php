@@ -42,6 +42,13 @@ return static function (Router $r): void {
     $r->add('GET', '/registrations', [RegistrationController::class, 'list']);
     $r->add('GET', '/registrations/{id}', [RegistrationController::class, 'show']);
     $r->add('POST', '/registrations/{id}/cancel', [RegistrationController::class, 'cancel']);
+    $r->add('POST', '/registrations/{id}/submit-payment', [RegistrationController::class, 'submitPayment']);
+    $r->add('GET', '/registrations/{id}/submissions', [RegistrationController::class, 'submissions']);
+    $r->add('GET', '/registrations/{id}/ticket', [RegistrationController::class, 'ticket']);
+    $r->add('POST', '/registrations/{id}/request-refund', [RegistrationController::class, 'requestRefund']);
+
+    // Receipts upload
+    $r->add('POST', '/uploads/receipt', [UploadController::class, 'storeReceipt']);
 
     // SME Payments
     $r->add('POST', '/payments/create', [PaymentController::class, 'create']);
@@ -58,8 +65,16 @@ return static function (Router $r): void {
     $r->add('GET', '/admin/smes', [AdminController::class, 'smes']);
     $r->add('GET', '/admin/smes/{id}', [AdminController::class, 'smeDetail']);
     $r->add('GET', '/admin/registrations', [AdminController::class, 'registrations']);
+    $r->add('POST', '/admin/registrations/{id}/cancel', [AdminController::class, 'cancelRegistration']);
     $r->add('PATCH', '/admin/registrations/{id}/attendance', [AdminController::class, 'updateAttendance']);
     $r->add('PATCH', '/admin/registrations/{id}/payment', [AdminController::class, 'correctPayment']);
+    $r->add('GET', '/admin/payment-submissions', [AdminController::class, 'paymentSubmissions']);
+    $r->add('POST', '/admin/payment-submissions/{id}/approve', [AdminController::class, 'approveSubmission']);
+    $r->add('POST', '/admin/payment-submissions/{id}/reject', [AdminController::class, 'rejectSubmission']);
+    $r->add('GET', '/admin/refunds', [AdminController::class, 'refunds']);
+    $r->add('POST', '/admin/refunds/{id}/approve', [AdminController::class, 'approveRefund']);
+    $r->add('POST', '/admin/refunds/{id}/reject', [AdminController::class, 'rejectRefund']);
+    $r->add('POST', '/admin/refunds/{id}/complete', [AdminController::class, 'completeRefund']);
     $r->add('GET', '/admin/results', [AdminController::class, 'results']);
     $r->add('GET', '/admin/scoring-rules', [AdminController::class, 'scoringRules']);
     $r->add('PUT', '/admin/scoring-rules', [AdminController::class, 'updateScoringRules']);
@@ -73,6 +88,9 @@ return static function (Router $r): void {
     $r->add('PUT', '/admin/masterclasses/{id}', [MasterclassController::class, 'update']);
     $r->add('PATCH', '/admin/masterclasses/{id}/status', [MasterclassController::class, 'setStatus']);
     $r->add('DELETE', '/admin/masterclasses/{id}', [MasterclassController::class, 'delete']);
+    $r->add('GET', '/admin/masterclasses/{id}/roster', [AdminController::class, 'roster']);
+    $r->add('POST', '/admin/masterclasses/{id}/check-in', [AdminController::class, 'checkIn']);
+    $r->add('POST', '/admin/tickets/verify', [AdminController::class, 'verifyTicket']);
     $r->add('POST', '/admin/speakers', [SpeakerController::class, 'create']);
     $r->add('PUT', '/admin/speakers/{id}', [SpeakerController::class, 'update']);
     $r->add('DELETE', '/admin/speakers/{id}', [SpeakerController::class, 'delete']);

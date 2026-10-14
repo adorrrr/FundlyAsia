@@ -87,8 +87,16 @@ export type RegistrationAvailability =
 export type FinancingIntent = 'yes' | 'no' | 'exploring';
 export type FinancingPurpose = 'working_capital' | 'inventory' | 'expansion' | 'equipment' | 'other';
 export type FinancingRange = 'below_5l' | '5_10l' | '10_25l' | '25_50l' | '50l_1cr' | 'above_1cr';
-export type RegistrationStatus = 'pending_payment' | 'confirmed' | 'cancelled' | 'attended' | 'no_show';
-export type PaymentStatus = 'not_required' | 'pending' | 'paid' | 'failed' | 'refund_requested' | 'refunded';
+export type RegistrationStatus = 'pending' | 'pending_payment' | 'confirmed' | 'cancelled' | 'attended' | 'no_show';
+export type PaymentStatus =
+  | 'not_required'
+  | 'pending'
+  | 'pending_verification'
+  | 'paid'
+  | 'failed'
+  | 'refund_requested'
+  | 'partially_refunded'
+  | 'refunded';
 
 export interface RegistrationInput {
   masterclassId: string;
@@ -104,12 +112,166 @@ export interface RegistrationInput {
 
 export interface Registration extends RegistrationInput {
   id: string; // FL-XXXXXX
+  rawId?: number;
   userId: string;
   status: RegistrationStatus;
   paymentStatus: PaymentStatus;
   amount: number;
+  amountPaid?: number;
+  amountRefunded?: number;
+  ticketNumber?: string;
+  attendanceStatus?: 'unmarked' | 'attended' | 'no_show';
+  cancellationReason?: string;
+  cancelledAt?: string;
   createdAt: ISODate;
-  demo: true;
+  masterclass?: {
+    id: string;
+    title: Localized;
+    topic: Localized;
+    date: string;
+    startTime: string;
+    endTime: string;
+    venue: Localized;
+    cover?: string;
+  };
+  latestSubmission?: {
+    status: PaymentSubmissionStatus;
+    rejectionReason?: string;
+    trxId?: string;
+    senderAccount?: string;
+    paymentMethod?: string;
+  };
+  demo?: boolean;
+}
+
+/* ---------------- Manual QR Payments & Tickets ---------------- */
+export type PaymentMethod = 'bkash' | 'nagad' | 'bank_transfer' | 'other';
+export type PaymentSubmissionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PaymentSubmission {
+  id: string;
+  registrationId: string;
+  userId: string;
+  paymentMethod: PaymentMethod;
+  senderAccount: string;
+  trxId: string;
+  amount: number;
+  paidAt?: string;
+  receiptPath?: string;
+  status: PaymentSubmissionStatus;
+  rejectionReason?: string;
+  verifiedByAdminId?: string;
+  verifiedByName?: string;
+  verifiedAt?: string;
+  adminNotes?: string;
+  createdAt: string;
+  registrationCode?: string;
+  attendeeName?: string;
+  attendeeEmail?: string;
+  businessName?: string;
+  payableAmount?: number;
+  masterclassId?: string;
+  masterclassTitle?: string;
+}
+
+export interface PaymentSubmissionInput {
+  paymentMethod: PaymentMethod;
+  senderAccount: string;
+  trxId: string;
+  amount: number;
+  paidAt?: string;
+  receiptPath?: string;
+  confirmAccurate: boolean;
+}
+
+export interface DigitalTicket {
+  id: string;
+  ticketNumber: string;
+  registrationId: string;
+  userId: string;
+  masterclassId: string;
+  status: 'valid' | 'used' | 'cancelled';
+  checkedInAt?: string;
+  checkedInByAdminId?: string;
+  createdAt: string;
+  attendee: {
+    name: string;
+    email: string;
+    businessName: string;
+    registrationCode: string;
+    amountPaid: number;
+  };
+  masterclass: {
+    id: string;
+    title: Localized;
+    topic: Localized;
+    date: string;
+    startTime: string;
+    endTime: string;
+    venue: Localized;
+    cover?: string;
+    speaker?: {
+      name: string;
+      designation: string;
+    };
+  };
+}
+
+export type RefundStatus = 'pending' | 'processing' | 'completed' | 'rejected';
+
+export interface RefundRecord {
+  id: string;
+  registrationId: string;
+  amount: number;
+  reason: string;
+  status: RefundStatus;
+  provider: string;
+  destinationAccount: string;
+  accountHolderName?: string;
+  refundMethod: string;
+  providerRefundId?: string;
+  requestedByUserId?: string;
+  requesterName?: string;
+  processedByAdminId?: string;
+  processedByName?: string;
+  notes?: string;
+  rejectionReason?: string;
+  receiptPath?: string;
+  createdAt: string;
+  updatedAt: string;
+  registrationCode?: string;
+  attendeeName?: string;
+  attendeeEmail?: string;
+  businessName?: string;
+  amountPaid: number;
+  amountRefunded: number;
+  masterclassId?: string;
+  masterclassTitle?: string;
+}
+
+export interface UserRefundRequestInput {
+  amount: number;
+  reason: string;
+  destinationAccount: string;
+  accountHolderName?: string;
+  refundMethod: string;
+}
+
+export interface RosterAttendee {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  businessName: string;
+  industry: string;
+  status: RegistrationStatus;
+  paymentStatus: PaymentStatus;
+  amountPaid: number;
+  attendanceStatus: 'unmarked' | 'attended' | 'no_show';
+  ticketNumber?: string;
+  ticketStatus?: string;
+  checkedInAt?: string;
+  createdAt: string;
 }
 
 /* ---------------- Eligibility ---------------- */

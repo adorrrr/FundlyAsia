@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { ServiceError } from '@/services/errors';
 import { Dialog } from '@/components/ui/Dialog';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
+import { AdminRosterModal } from '@/components/masterclasses/AdminRosterModal';
 import { useToast } from '@/components/ui/Toast';
 
 export const MC_STATUSES: MasterclassStatus[] = ['draft', 'published', 'registration_open', 'registration_closed', 'completed', 'cancelled'];
@@ -35,6 +36,7 @@ export default function AdminMasterclassesPage() {
 
   const [toDelete, setToDelete] = useState<Masterclass | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [rosterMc, setRosterMc] = useState<Masterclass | null>(null);
 
   const confirmDelete = async () => {
     if (!toDelete || deleting) return;
@@ -117,6 +119,9 @@ export default function AdminMasterclassesPage() {
               align: 'right',
               cell: (m) => (
                 <div className="flex justify-end gap-1">
+                  <Button size="sm" variant="ghost" icon={<Users className="h-3.5 w-3.5" />} onClick={() => setRosterMc(m)}>
+                    Roster
+                  </Button>
                   <Button size="sm" variant="ghost" to={`/admin/masterclasses/${m.id}/edit`} icon={<Pencil className="h-3.5 w-3.5" />}>{d.common.edit}</Button>
                   <Button size="sm" variant="ghost" className="text-bad" onClick={() => setToDelete(m)} icon={<Trash2 className="h-3.5 w-3.5" />}>{a.delete}</Button>
                 </div>
@@ -138,6 +143,14 @@ export default function AdminMasterclassesPage() {
           </>
         }
       />
+
+      {rosterMc && (
+        <AdminRosterModal
+          masterclass={rosterMc}
+          open={!!rosterMc}
+          onClose={() => setRosterMc(null)}
+        />
+      )}
     </div>
   );
 }

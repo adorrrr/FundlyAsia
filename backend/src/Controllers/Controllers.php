@@ -314,6 +314,51 @@ final class UploadController
         $base = rtrim((string) \Fundly\Support\Env::get('UPLOAD_PUBLIC_URL', '/uploads'), '/');
         Response::json(['url' => $base . '/' . $name], 201);
     }
+
+    public static function storeReceipt(Request $req): void
+    {
+        $user = Auth::currentUser();
+        $admin = Auth::currentAdmin();
+        if (!$user && !$admin) {
+            throw new HttpException(401, 'unauthorized', 'Authentication required.');
+        }
+
+        $f = $_FILES['file'] ?? null;
+        if (!is_array($f) || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $f['tmp_name'])) {
+            throw new HttpException(422, 'validation', 'No valid file was uploaded.');
+        }
+        if ($f['size'] > 4 * 1024 * 1024) {
+            throw new HttpException(422, 'file_too_large', 'The receipt file must be 4 MB or smaller.');
+        }
+
+        $allowed = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'application/pdf' => 'pdf',
+        ];
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
+        if (!isset($allowed[$mime])) {
+            throw new HttpException(422, 'file_type', 'Please upload a JPG, PNG, WebP image or PDF receipt.');
+        }
+
+        $dir = dirname(__DIR__, 2) . '/public/uploads/receipts';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        $ext = $allowed[$mime];
+        $name = 'receipt_' . bin2hex(random_bytes(12)) . '.' . $ext;
+        $dest = $dir . '/' . $name;
+
+        if (!move_uploaded_file($f['tmp_name'], $dest)) {
+            throw new HttpException(500, 'server_error', 'The receipt could not be saved.');
+        }
+
+        $base = rtrim((string) \Fundly\Support\Env::get('UPLOAD_PUBLIC_URL', '/uploads'), '/');
+        Response::json(['url' => $base . '/receipts/' . $name], 201);
+    }
 }
 
 final class BusinessProfileController
@@ -376,6 +421,51 @@ final class RegistrationController
         $user = Auth::requireUser();
         \Fundly\Repositories\RegistrationRepository::cancel($req->params['id'], (int) $user['id']);
         Response::noContent();
+    }
+
+    public static function submitPayment(Request $req): void
+    {
+        $user = Auth::requireUser();
+        $v = Validator::paymentSubmission($req->json());
+        $sub = \Fundly\Repositories\PaymentSubmissionRepository::create($req->params['id'], (int) $user['id'], $v, $req->ip());
+        Response::json($sub, 201);
+    }
+
+    public static function submissions(Request $req): void
+    {
+        $user = Auth::currentUser();
+        $admin = Auth::currentAdmin();
+        if (!$user && !$admin) {
+            throw new HttpException(401, 'unauthorized', 'Authentication required.');
+        }
+
+        $reg = \Fundly\Repositories\RegistrationRepository::findById($req->params['id'], $admin ? null : (int) $user['id']);
+        if (!$reg) {
+            throw new HttpException(404, 'not_found', 'Registration not found.');
+        }
+
+        $list = \Fundly\Repositories\PaymentSubmissionRepository::listSubmissions($reg['rawId']);
+        Response::json($list);
+    }
+
+    public static function ticket(Request $req): void
+    {
+        $user = Auth::currentUser();
+        $admin = Auth::currentAdmin();
+        if (!$user && !$admin) {
+            throw new HttpException(401, 'unauthorized', 'Authentication required.');
+        }
+
+        $ticket = \Fundly\Repositories\TicketRepository::getByRegistration($req->params['id'], $admin ? null : (int) $user['id']);
+        Response::json($ticket);
+    }
+
+    public static function requestRefund(Request $req): void
+    {
+        $user = Auth::requireUser();
+        $v = Validator::userRefundRequest($req->json());
+        $ref = \Fundly\Repositories\RefundRepository::createRequest($req->params['id'], (int) $user['id'], $v, $req->ip());
+        Response::json($ref, 201);
     }
 }
 
@@ -561,6 +651,130 @@ final class AdminController
         $active = !empty($b['active']);
         \Fundly\Repositories\EligibilityRepository::setQuestionActive($id, $active);
         Response::noContent();
+    }
+
+    public static function cancelRegistration(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $reason = is_string($b['reason'] ?? null) ? trim($b['reason']) : 'Administrative cancellation';
+        \Fundly\Repositories\RegistrationRepository::adminCancel($id, (int) $admin['id'], $reason, $req->ip());
+        $updated = \Fundly\Repositories\RegistrationRepository::findById($id, null);
+        Response::json($updated);
+    }
+
+    public static function paymentSubmissions(Request $req): void
+    {
+        Auth::requireAdmin();
+        $filters = [
+            'status' => $_GET['status'] ?? '',
+            'search' => $_GET['search'] ?? '',
+        ];
+        Response::json(\Fundly\Repositories\PaymentSubmissionRepository::listSubmissions(null, null, $filters));
+    }
+
+    public static function approveSubmission(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $notes = is_string($b['adminNotes'] ?? null) ? trim($b['adminNotes']) : null;
+        $res = \Fundly\Repositories\PaymentSubmissionRepository::approve($id, (int) $admin['id'], $req->ip(), $notes);
+        Response::json($res);
+    }
+
+    public static function rejectSubmission(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $reason = is_string($b['reason'] ?? null) ? trim($b['reason']) : '';
+        if ($reason === '') {
+            throw new HttpException(422, 'validation', 'A rejection reason is required.');
+        }
+        $notes = is_string($b['adminNotes'] ?? null) ? trim($b['adminNotes']) : null;
+        $res = \Fundly\Repositories\PaymentSubmissionRepository::reject($id, (int) $admin['id'], $reason, $req->ip(), $notes);
+        Response::json($res);
+    }
+
+    public static function refunds(Request $req): void
+    {
+        Auth::requireAdmin();
+        $filters = [
+            'status' => $_GET['status'] ?? '',
+            'search' => $_GET['search'] ?? '',
+        ];
+        Response::json(\Fundly\Repositories\RefundRepository::listAdmin($filters));
+    }
+
+    public static function approveRefund(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $notes = is_string($b['notes'] ?? null) ? trim($b['notes']) : null;
+        $res = \Fundly\Repositories\RefundRepository::approve($id, (int) $admin['id'], $req->ip(), $notes);
+        Response::json($res);
+    }
+
+    public static function rejectRefund(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $reason = is_string($b['reason'] ?? null) ? trim($b['reason']) : '';
+        if ($reason === '') {
+            throw new HttpException(422, 'validation', 'A rejection reason is required.');
+        }
+        $res = \Fundly\Repositories\RefundRepository::reject($id, (int) $admin['id'], $reason, $req->ip());
+        Response::json($res);
+    }
+
+    public static function completeRefund(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = (int) $req->params['id'];
+        $b = $req->json();
+        $res = \Fundly\Repositories\RefundRepository::complete($id, (int) $admin['id'], $b, $req->ip());
+        Response::json($res);
+    }
+
+    public static function roster(Request $req): void
+    {
+        Auth::requireAdmin();
+        $mcId = (int) $req->params['id'];
+        $filters = [
+            'attendanceStatus' => $_GET['attendanceStatus'] ?? '',
+            'search' => $_GET['search'] ?? '',
+        ];
+        Response::json(\Fundly\Repositories\MasterclassRepository::getRoster($mcId, $filters));
+    }
+
+    public static function checkIn(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $mcId = (int) $req->params['id'];
+        $b = $req->json();
+        $ticketNumber = is_string($b['ticketNumber'] ?? null) ? trim($b['ticketNumber']) : '';
+        if ($ticketNumber === '') {
+            throw new HttpException(422, 'validation', 'Ticket number is required.');
+        }
+        $res = \Fundly\Repositories\TicketRepository::checkIn($ticketNumber, (int) $admin['id'], $mcId);
+        Response::json($res);
+    }
+
+    public static function verifyTicket(Request $req): void
+    {
+        Auth::requireAdmin();
+        $b = $req->json();
+        $ticketNumber = is_string($b['ticketNumber'] ?? null) ? trim($b['ticketNumber']) : '';
+        if ($ticketNumber === '') {
+            throw new HttpException(422, 'validation', 'Ticket number is required.');
+        }
+        $mcId = !empty($b['masterclassId']) ? (int) $b['masterclassId'] : null;
+        $res = \Fundly\Repositories\TicketRepository::verifyTicket($ticketNumber, $mcId);
+        Response::json($res);
     }
 }
 

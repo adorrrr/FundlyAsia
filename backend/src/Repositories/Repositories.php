@@ -6,6 +6,7 @@ namespace Fundly\Repositories;
 use Fundly\Support\Db;
 use Fundly\Support\HttpException;
 use Fundly\Support\Validator;
+use Fundly\Support\Auth;
 use PDO;
 
 final class SpeakerRepository
@@ -241,6 +242,48 @@ final class MasterclassRepository
         }
         return $out;
     }
+
+    /** @param array<string,string> $filters @return array<int,array<string,mixed>> */
+    public static function getRoster(int $mcId, array $filters = []): array
+    {
+        $pdo = Db::pdo();
+        $sql = "SELECT r.*, t.ticket_number AS t_ticket_number, t.status AS ticket_status, t.checked_in_at AS ticket_checked_in_at FROM registrations r LEFT JOIN tickets t ON t.registration_id = r.id WHERE r.masterclass_id = ? AND r.status <> 'cancelled'";
+        $params = [$mcId];
+
+        if (!empty($filters['attendanceStatus'])) {
+            $sql .= ' AND r.attendance_status = ?';
+            $params[] = $filters['attendanceStatus'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (r.name LIKE ? OR r.email LIKE ? OR r.code LIKE ? OR r.ticket_number LIKE ? OR r.business_name LIKE ?)';
+            $term = "%{$filters['search']}%";
+            $params = array_merge($params, [$term, $term, $term, $term, $term]);
+        }
+
+        $sql .= ' ORDER BY r.name ASC, r.id ASC';
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        $rows = $st->fetchAll();
+
+        return array_map(function ($r) {
+            return [
+                'id' => (string) $r['id'],
+                'code' => $r['code'] ?: 'FL-' . str_pad((string) $r['id'], 6, '0', STR_PAD_LEFT),
+                'name' => $r['name'],
+                'email' => $r['email'],
+                'businessName' => $r['business_name'],
+                'industry' => $r['industry'],
+                'status' => $r['status'],
+                'paymentStatus' => $r['payment_status'],
+                'amountPaid' => (float) $r['amount_paid'],
+                'attendanceStatus' => $r['attendance_status'],
+                'ticketNumber' => $r['ticket_number'] ?: $r['t_ticket_number'],
+                'ticketStatus' => $r['ticket_status'],
+                'checkedInAt' => $r['ticket_checked_in_at'],
+                'createdAt' => $r['created_at'],
+            ];
+        }, $rows);
+    }
 }
 
 final class BusinessProfileRepository
@@ -367,7 +410,16 @@ final class RegistrationRepository
     /** @return array<int,array<string,mixed>> */
     public static function listByUser(int $userId): array
     {
-        $st = Db::pdo()->prepare('SELECT * FROM registrations WHERE user_id = ? ORDER BY id DESC');
+        $st = Db::pdo()->prepare("SELECT r.*, m.title_en, m.title_bn, m.topic_en, m.topic_bn, m.event_date, m.start_time, m.end_time, m.venue_en, m.venue_bn, m.cover_path,
+            (SELECT ps.status FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_status,
+            (SELECT ps.rejection_reason FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_rejection_reason,
+            (SELECT ps.trx_id FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_trx_id,
+            (SELECT ps.sender_account FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_sender_account,
+            (SELECT ps.payment_method FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_payment_method
+            FROM registrations r
+            JOIN masterclasses m ON m.id = r.masterclass_id
+            WHERE r.user_id = ?
+            ORDER BY r.id DESC");
         $st->execute([$userId]);
         return array_map([self::class, 'map'], $st->fetchAll());
     }
@@ -377,7 +429,15 @@ final class RegistrationRepository
     {
         $pdo = Db::pdo();
         $isCode = str_starts_with((string) $id, 'FL-');
-        $st = $pdo->prepare('SELECT * FROM registrations WHERE ' . ($isCode ? 'code = ?' : 'id = ?'));
+        $st = $pdo->prepare("SELECT r.*, m.title_en, m.title_bn, m.topic_en, m.topic_bn, m.event_date, m.start_time, m.end_time, m.venue_en, m.venue_bn, m.cover_path,
+            (SELECT ps.status FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_status,
+            (SELECT ps.rejection_reason FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_rejection_reason,
+            (SELECT ps.trx_id FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_trx_id,
+            (SELECT ps.sender_account FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_sender_account,
+            (SELECT ps.payment_method FROM payment_submissions ps WHERE ps.registration_id = r.id ORDER BY ps.id DESC LIMIT 1) AS sub_payment_method
+            FROM registrations r
+            JOIN masterclasses m ON m.id = r.masterclass_id
+            WHERE " . ($isCode ? 'r.code = ?' : 'r.id = ?'));
         $st->execute([$isCode ? (string) $id : (int) $id]);
         $row = $st->fetch();
         if (!$row) {
@@ -396,14 +456,50 @@ final class RegistrationRepository
             throw new HttpException(404, 'not_found', 'Registration not found.');
         }
         $pdo = Db::pdo();
-        $pdo->prepare('UPDATE registrations SET status = \'cancelled\', updated_at = ? WHERE id = ?')->execute([Db::now(), $reg['rawId']]);
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE registrations SET status = \'cancelled\', updated_at = ? WHERE id = ?')->execute([$now, $reg['rawId']]);
+            $pdo->prepare('UPDATE tickets SET status = \'cancelled\', updated_at = ? WHERE registration_id = ?')->execute([$now, $reg['rawId']]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public static function adminCancel(int $id, int $adminId, string $reason, string $ip): void
+    {
+        $pdo = Db::pdo();
+        $st = $pdo->prepare('SELECT * FROM registrations WHERE id = ?');
+        $st->execute([$id]);
+        $reg = $st->fetch();
+        if (!$reg) {
+            throw new HttpException(404, 'not_found', 'Registration not found.');
+        }
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('UPDATE registrations SET status = \'cancelled\', cancellation_reason = ?, cancelled_at = ?, cancelled_by_admin_id = ?, updated_at = ? WHERE id = ?')
+                ->execute([$reason, $now, $adminId, $now, $id]);
+            $pdo->prepare('UPDATE tickets SET status = \'cancelled\', updated_at = ? WHERE registration_id = ?')->execute([$now, $id]);
+            Auth::audit($adminId, 'registration.cancel', 'registration', $id, $ip, 'Admin cancelled registration: ' . $reason);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /** @param array<string,mixed> $r @return array<string,mixed> */
     public static function map(array $r): array
     {
         $id = !empty($r['code']) ? $r['code'] : 'FL-' . str_pad((string) $r['id'], 6, '0', STR_PAD_LEFT);
-        return [
+        $out = [
             'id' => $id,
             'rawId' => (int) $r['id'],
             'userId' => (string) $r['user_id'],
@@ -419,7 +515,646 @@ final class RegistrationRepository
             'status' => $r['status'],
             'paymentStatus' => $r['payment_status'],
             'amount' => (float) $r['amount'],
+            'ticketNumber' => $r['ticket_number'] ?? null,
+            'amountPaid' => (float) ($r['amount_paid'] ?? 0),
+            'amountRefunded' => (float) ($r['amount_refunded'] ?? 0),
+            'attendanceStatus' => $r['attendance_status'] ?? 'unmarked',
+            'cancellationReason' => $r['cancellation_reason'] ?? null,
+            'cancelledAt' => $r['cancelled_at'] ?? null,
             'createdAt' => $r['created_at'],
+        ];
+
+        if (isset($r['title_en'])) {
+            $out['masterclass'] = [
+                'id' => (string) $r['masterclass_id'],
+                'title' => ['en' => $r['title_en'], 'bn' => $r['title_bn'] ?? $r['title_en']],
+                'topic' => ['en' => $r['topic_en'] ?? '', 'bn' => $r['topic_bn'] ?? ''],
+                'date' => $r['event_date'] ?? '',
+                'startTime' => $r['start_time'] ?? '',
+                'endTime' => $r['end_time'] ?? '',
+                'venue' => ['en' => $r['venue_en'] ?? '', 'bn' => $r['venue_bn'] ?? ''],
+                'cover' => $r['cover_path'] ?? null,
+            ];
+        }
+
+        if (isset($r['sub_status']) && $r['sub_status'] !== null) {
+            $out['latestSubmission'] = [
+                'status' => $r['sub_status'],
+                'rejectionReason' => $r['sub_rejection_reason'] ?? null,
+                'trxId' => $r['sub_trx_id'] ?? null,
+                'senderAccount' => $r['sub_sender_account'] ?? null,
+                'paymentMethod' => $r['sub_payment_method'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+}
+
+final class PaymentSubmissionRepository
+{
+    /** @param array<string,mixed> $v @return array<string,mixed> */
+    public static function create(int|string $registrationId, int $userId, array $v, string $ip): array
+    {
+        $pdo = Db::pdo();
+        $reg = RegistrationRepository::findById($registrationId, $userId);
+        if (!$reg) {
+            throw new HttpException(404, 'not_found', 'Registration not found.');
+        }
+
+        if ($reg['status'] === 'cancelled') {
+            throw new HttpException(422, 'cancelled', 'Cannot submit payment for a cancelled registration.');
+        }
+
+        if ($reg['paymentStatus'] === 'paid') {
+            throw new HttpException(422, 'already_paid', 'This registration is already paid.');
+        }
+
+        $amount = (float) $v['amount'];
+        $expectedAmount = (float) $reg['amount'];
+        if ($amount <= 0 || abs($amount - $expectedAmount) > 0.01) {
+            throw new HttpException(422, 'invalid_amount', 'Payment amount must match payable fee (BDT ' . number_format($expectedAmount, 2) . ').');
+        }
+
+        $trxId = trim($v['trxId']);
+        $chk = $pdo->prepare("SELECT id, status FROM payment_submissions WHERE trx_id = ? AND status IN ('pending', 'approved') LIMIT 1");
+        $chk->execute([$trxId]);
+        if ($chk->fetch()) {
+            throw new HttpException(422, 'duplicate_trx_id', 'This Transaction ID has already been submitted or approved.');
+        }
+
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('INSERT INTO payment_submissions (registration_id, user_id, payment_method, sender_account, trx_id, amount, paid_at, receipt_path, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, \'pending\', ?, ?)');
+            $st->execute([
+                $reg['rawId'],
+                $userId,
+                $v['paymentMethod'],
+                $v['senderAccount'],
+                $trxId,
+                $amount,
+                !empty($v['paidAt']) ? $v['paidAt'] : $now,
+                $v['receiptPath'] ?? null,
+                $now,
+                $now
+            ]);
+            $subId = (int) $pdo->lastInsertId();
+
+            $pdo->prepare("UPDATE registrations SET payment_status = 'pending_verification', updated_at = ? WHERE id = ?")
+                ->execute([$now, $reg['rawId']]);
+
+            Auth::audit($userId, 'payment_submission.create', 'payment_submission', $subId, $ip, 'User submitted payment verification for registration #' . $reg['id']);
+
+            $pdo->commit();
+            return self::getById($subId);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @return array<string,mixed> */
+    public static function getById(int $id): array
+    {
+        $st = Db::pdo()->prepare('SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.full_name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users adm ON adm.id = ps.verified_by_admin_id WHERE ps.id = ?');
+        $st->execute([$id]);
+        $row = $st->fetch();
+        if (!$row) {
+            throw new HttpException(404, 'not_found', 'Payment submission not found.');
+        }
+        return self::map($row);
+    }
+
+    /** @param array<string,string> $filters @return array<int,array<string,mixed>> */
+    public static function listSubmissions(?int $regId = null, ?int $userId = null, array $filters = []): array
+    {
+        $pdo = Db::pdo();
+        $sql = 'SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.full_name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users adm ON adm.id = ps.verified_by_admin_id WHERE 1=1';
+        $params = [];
+
+        if ($regId !== null) {
+            $sql .= ' AND ps.registration_id = ?';
+            $params[] = $regId;
+        }
+        if ($userId !== null) {
+            $sql .= ' AND ps.user_id = ?';
+            $params[] = $userId;
+        }
+        if (!empty($filters['status'])) {
+            $sql .= ' AND ps.status = ?';
+            $params[] = $filters['status'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (ps.trx_id LIKE ? OR ps.sender_account LIKE ? OR r.name LIKE ? OR r.email LIKE ? OR r.code LIKE ?)';
+            $term = "%{$filters['search']}%";
+            $params = array_merge($params, [$term, $term, $term, $term, $term]);
+        }
+
+        $sql .= ' ORDER BY ps.id DESC';
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        return array_map([self::class, 'map'], $st->fetchAll());
+    }
+
+    public static function approve(int $submissionId, int $adminId, string $ip, ?string $adminNotes = null): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('SELECT * FROM payment_submissions WHERE id = ? FOR UPDATE');
+            $st->execute([$submissionId]);
+            $sub = $st->fetch();
+            if (!$sub) {
+                throw new HttpException(404, 'not_found', 'Payment submission not found.');
+            }
+            if ($sub['status'] !== 'pending') {
+                throw new HttpException(422, 'already_processed', 'This submission has already been ' . $sub['status'] . '.');
+            }
+
+            $regId = (int) $sub['registration_id'];
+            $stReg = $pdo->prepare('SELECT * FROM registrations WHERE id = ? FOR UPDATE');
+            $stReg->execute([$regId]);
+            $reg = $stReg->fetch();
+            if (!$reg) {
+                throw new HttpException(404, 'not_found', 'Registration not found.');
+            }
+
+            $upSub = $pdo->prepare('UPDATE payment_submissions SET status = \'approved\', verified_by_admin_id = ?, verified_at = ?, admin_notes = ?, updated_at = ? WHERE id = ?');
+            $upSub->execute([$adminId, $now, $adminNotes, $now, $submissionId]);
+
+            $insPay = $pdo->prepare('INSERT INTO payments (registration_id, user_id, amount, currency, provider, status, trx_id, created_at, updated_at) VALUES (?, ?, ?, \'BDT\', ?, \'paid\', ?, ?, ?)');
+            $insPay->execute([$regId, (int) $sub['user_id'], $sub['amount'], $sub['payment_method'], $sub['trx_id'], $now, $now]);
+
+            $ticketNumber = $reg['ticket_number'];
+            if (empty($ticketNumber)) {
+                $ticketNumber = 'TICK-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3))) . '-' . str_pad((string) $regId, 4, '0', STR_PAD_LEFT);
+                $insTicket = $pdo->prepare('INSERT INTO tickets (ticket_number, registration_id, user_id, masterclass_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, \'valid\', ?, ?)');
+                $insTicket->execute([$ticketNumber, $regId, (int) $reg['user_id'], (int) $reg['masterclass_id'], $now, $now]);
+            } else {
+                $pdo->prepare("UPDATE tickets SET status = 'valid', updated_at = ? WHERE ticket_number = ?")->execute([$now, $ticketNumber]);
+            }
+
+            $upReg = $pdo->prepare("UPDATE registrations SET status = 'confirmed', payment_status = 'paid', amount_paid = ?, ticket_number = ?, updated_at = ? WHERE id = ?");
+            $upReg->execute([$sub['amount'], $ticketNumber, $now, $regId]);
+
+            Auth::audit($adminId, 'payment_submission.approve', 'payment_submission', $submissionId, $ip, 'Admin approved TrxID ' . $sub['trx_id'] . ' for BDT ' . $sub['amount']);
+
+            $pdo->commit();
+            return [
+                'submission' => self::getById($submissionId),
+                'ticketNumber' => $ticketNumber,
+                'status' => 'approved'
+            ];
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public static function reject(int $submissionId, int $adminId, string $reason, string $ip, ?string $adminNotes = null): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('SELECT * FROM payment_submissions WHERE id = ? FOR UPDATE');
+            $st->execute([$submissionId]);
+            $sub = $st->fetch();
+            if (!$sub) {
+                throw new HttpException(404, 'not_found', 'Payment submission not found.');
+            }
+            if ($sub['status'] !== 'pending') {
+                throw new HttpException(422, 'already_processed', 'This submission has already been ' . $sub['status'] . '.');
+            }
+
+            $regId = (int) $sub['registration_id'];
+            $upSub = $pdo->prepare('UPDATE payment_submissions SET status = \'rejected\', rejection_reason = ?, verified_by_admin_id = ?, verified_at = ?, admin_notes = ?, updated_at = ? WHERE id = ?');
+            $upSub->execute([$reason, $adminId, $now, $adminNotes, $now, $submissionId]);
+
+            $upReg = $pdo->prepare("UPDATE registrations SET payment_status = 'failed', updated_at = ? WHERE id = ?");
+            $upReg->execute([$now, $regId]);
+
+            Auth::audit($adminId, 'payment_submission.reject', 'payment_submission', $submissionId, $ip, 'Admin rejected submission: ' . $reason);
+
+            $pdo->commit();
+            return [
+                'submission' => self::getById($submissionId),
+                'status' => 'rejected',
+                'reason' => $reason
+            ];
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @param array<string,mixed> $r @return array<string,mixed> */
+    public static function map(array $r): array
+    {
+        return [
+            'id' => (string) $r['id'],
+            'registrationId' => (string) $r['registration_id'],
+            'userId' => (string) $r['user_id'],
+            'paymentMethod' => $r['payment_method'],
+            'senderAccount' => $r['sender_account'],
+            'trxId' => $r['trx_id'],
+            'amount' => (float) $r['amount'],
+            'paidAt' => $r['paid_at'],
+            'receiptPath' => $r['receipt_path'],
+            'status' => $r['status'],
+            'rejectionReason' => $r['rejection_reason'],
+            'verifiedByAdminId' => $r['verified_by_admin_id'] ? (string) $r['verified_by_admin_id'] : null,
+            'verifiedByName' => $r['verified_by_name'] ?? null,
+            'verifiedAt' => $r['verified_at'],
+            'adminNotes' => $r['admin_notes'],
+            'createdAt' => $r['created_at'],
+            'registrationCode' => $r['reg_code'] ?? null,
+            'attendeeName' => $r['attendee_name'] ?? null,
+            'attendeeEmail' => $r['attendee_email'] ?? null,
+            'businessName' => $r['business_name'] ?? null,
+            'payableAmount' => isset($r['payable_amount']) ? (float) $r['payable_amount'] : null,
+            'masterclassId' => isset($r['mc_id']) ? (string) $r['mc_id'] : null,
+            'masterclassTitle' => $r['masterclass_title'] ?? null,
+        ];
+    }
+}
+
+final class TicketRepository
+{
+    /** @return array<string,mixed> */
+    public static function getByRegistration(int|string $registrationId, ?int $userId = null): array
+    {
+        $reg = RegistrationRepository::findById($registrationId, $userId);
+        if (!$reg) {
+            throw new HttpException(404, 'not_found', 'Registration not found.');
+        }
+
+        $pdo = Db::pdo();
+        $st = $pdo->prepare('SELECT t.*, m.title_en, m.title_bn, m.topic_en, m.topic_bn, m.event_date, m.start_time, m.end_time, m.venue_en, m.venue_bn, m.cover_path, sp.name AS speaker_name, sp.designation AS speaker_designation, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.code AS registration_code, r.amount_paid FROM tickets t JOIN registrations r ON r.id = t.registration_id JOIN masterclasses m ON m.id = t.masterclass_id LEFT JOIN speakers sp ON sp.id = m.speaker_id WHERE t.registration_id = ?');
+        $st->execute([$reg['rawId']]);
+        $row = $st->fetch();
+        if (!$row) {
+            throw new HttpException(404, 'not_found', 'Digital ticket has not been issued yet.');
+        }
+
+        return self::map($row);
+    }
+
+    /** @return array<string,mixed> */
+    public static function verifyTicket(string $ticketNumber, ?int $masterclassId = null): array
+    {
+        $pdo = Db::pdo();
+        $sql = 'SELECT t.*, m.title_en, m.title_bn, m.topic_en, m.topic_bn, m.event_date, m.start_time, m.end_time, m.venue_en, m.venue_bn, m.cover_path, sp.name AS speaker_name, sp.designation AS speaker_designation, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.code AS registration_code, r.amount_paid FROM tickets t JOIN registrations r ON r.id = t.registration_id JOIN masterclasses m ON m.id = t.masterclass_id LEFT JOIN speakers sp ON sp.id = m.speaker_id WHERE t.ticket_number = ?';
+        $params = [$ticketNumber];
+        if ($masterclassId !== null) {
+            $sql .= ' AND t.masterclass_id = ?';
+            $params[] = $masterclassId;
+        }
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        $row = $st->fetch();
+        if (!$row) {
+            return [
+                'valid' => false,
+                'message' => 'Ticket not found or invalid for this masterclass.',
+                'ticket' => null,
+            ];
+        }
+
+        $ticket = self::map($row);
+        $isCancelled = $ticket['status'] === 'cancelled';
+        $isCheckedIn = !empty($ticket['checkedInAt']);
+
+        return [
+            'valid' => !$isCancelled && !$isCheckedIn,
+            'alreadyCheckedIn' => $isCheckedIn,
+            'isCancelled' => $isCancelled,
+            'message' => $isCancelled ? 'Ticket has been cancelled.' : ($isCheckedIn ? 'Attendee already checked in at ' . $ticket['checkedInAt'] : 'Valid ticket.'),
+            'ticket' => $ticket,
+        ];
+    }
+
+    public static function checkIn(string $ticketNumber, int $adminId, ?int $masterclassId = null): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $sql = 'SELECT t.*, r.id AS reg_id FROM tickets t JOIN registrations r ON r.id = t.registration_id WHERE t.ticket_number = ? FOR UPDATE';
+            $st = $pdo->prepare($sql);
+            $st->execute([$ticketNumber]);
+            $t = $st->fetch();
+            if (!$t) {
+                throw new HttpException(404, 'not_found', 'Ticket not found.');
+            }
+            if ($masterclassId !== null && (int)$t['masterclass_id'] !== $masterclassId) {
+                throw new HttpException(422, 'wrong_masterclass', 'This ticket belongs to a different Masterclass session.');
+            }
+            if ($t['status'] === 'cancelled') {
+                throw new HttpException(422, 'ticket_cancelled', 'This ticket has been cancelled.');
+            }
+            if (!empty($t['checked_in_at'])) {
+                $pdo->commit();
+                return [
+                    'status' => 'already_checked_in',
+                    'checkedInAt' => $t['checked_in_at'],
+                    'message' => 'Attendee was already checked in at ' . $t['checked_in_at'],
+                ];
+            }
+
+            $upT = $pdo->prepare('UPDATE tickets SET checked_in_at = ?, checked_in_by_admin_id = ?, status = \'used\', updated_at = ? WHERE id = ?');
+            $upT->execute([$now, $adminId, $now, $t['id']]);
+
+            $upR = $pdo->prepare("UPDATE registrations SET attendance_status = 'attended', updated_at = ? WHERE id = ?");
+            $upR->execute([$now, $t['reg_id']]);
+
+            Auth::audit($adminId, 'ticket.check_in', 'ticket', (int)$t['id'], '127.0.0.1', 'Attendee checked in via ticket ' . $ticketNumber);
+
+            $pdo->commit();
+            return [
+                'status' => 'checked_in',
+                'checkedInAt' => $now,
+                'message' => 'Attendee checked in successfully.',
+            ];
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @param array<string,mixed> $r @return array<string,mixed> */
+    public static function map(array $r): array
+    {
+        return [
+            'id' => (string) $r['id'],
+            'ticketNumber' => $r['ticket_number'],
+            'registrationId' => (string) $r['registration_id'],
+            'userId' => (string) $r['user_id'],
+            'masterclassId' => (string) $r['masterclass_id'],
+            'status' => $r['status'],
+            'checkedInAt' => $r['checked_in_at'],
+            'checkedInByAdminId' => $r['checked_in_by_admin_id'] ? (string) $r['checked_in_by_admin_id'] : null,
+            'createdAt' => $r['created_at'],
+            'attendee' => [
+                'name' => $r['attendee_name'] ?? '',
+                'email' => $r['attendee_email'] ?? '',
+                'businessName' => $r['business_name'] ?? '',
+                'registrationCode' => $r['registration_code'] ?? '',
+                'amountPaid' => (float) ($r['amount_paid'] ?? 0),
+            ],
+            'masterclass' => [
+                'id' => (string) $r['masterclass_id'],
+                'title' => ['en' => $r['title_en'] ?? '', 'bn' => $r['title_bn'] ?? ''],
+                'topic' => ['en' => $r['topic_en'] ?? '', 'bn' => $r['topic_bn'] ?? ''],
+                'date' => $r['event_date'] ?? '',
+                'startTime' => $r['start_time'] ?? '',
+                'endTime' => $r['end_time'] ?? '',
+                'venue' => ['en' => $r['venue_en'] ?? '', 'bn' => $r['venue_bn'] ?? ''],
+                'cover' => $r['cover_path'] ?? null,
+                'speaker' => [
+                    'name' => $r['speaker_name'] ?? '',
+                    'designation' => $r['speaker_designation'] ?? '',
+                ],
+            ],
+        ];
+    }
+}
+
+final class RefundRepository
+{
+    /** @param array<string,mixed> $v @return array<string,mixed> */
+    public static function createRequest(int|string $registrationId, int $userId, array $v, string $ip): array
+    {
+        $reg = RegistrationRepository::findById($registrationId, $userId);
+        if (!$reg) {
+            throw new HttpException(404, 'not_found', 'Registration not found.');
+        }
+
+        $amountPaid = (float) ($reg['amountPaid'] ?? 0);
+        $amountRefunded = (float) ($reg['amountRefunded'] ?? 0);
+        $maxRefundable = $amountPaid - $amountRefunded;
+
+        if ($maxRefundable <= 0) {
+            throw new HttpException(422, 'not_refundable', 'This registration has no refundable balance.');
+        }
+
+        $amount = (float) $v['amount'];
+        if ($amount <= 0 || $amount > $maxRefundable + 0.01) {
+            throw new HttpException(422, 'invalid_amount', 'Requested refund amount cannot exceed refundable balance (BDT ' . number_format($maxRefundable, 2) . ').');
+        }
+
+        $pdo = Db::pdo();
+        $chk = $pdo->prepare("SELECT id FROM refunds WHERE registration_id = ? AND status IN ('pending', 'processing') LIMIT 1");
+        $chk->execute([$reg['rawId']]);
+        if ($chk->fetch()) {
+            throw new HttpException(422, 'already_pending', 'There is already an active refund request for this registration.');
+        }
+
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('INSERT INTO refunds (registration_id, amount, reason, status, provider, destination_account, account_holder_name, refund_method, requested_by_user_id, created_at, updated_at) VALUES (?, ?, ?, \'pending\', \'manual\', ?, ?, ?, ?, ?, ?)');
+            $st->execute([
+                $reg['rawId'],
+                $amount,
+                $v['reason'],
+                $v['destinationAccount'],
+                $v['accountHolderName'] ?? null,
+                $v['refundMethod'],
+                $userId,
+                $now,
+                $now
+            ]);
+            $refId = (int) $pdo->lastInsertId();
+
+            $pdo->prepare("UPDATE registrations SET payment_status = 'refund_requested', updated_at = ? WHERE id = ?")
+                ->execute([$now, $reg['rawId']]);
+
+            Auth::audit($userId, 'refund.request', 'refund', $refId, $ip, 'User requested refund of BDT ' . $amount);
+
+            $pdo->commit();
+            return self::getById($refId);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @return array<string,mixed> */
+    public static function getById(int $id): array
+    {
+        $st = Db::pdo()->prepare('SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.full_name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN users adm ON adm.id = rf.processed_by_admin_id WHERE rf.id = ?');
+        $st->execute([$id]);
+        $row = $st->fetch();
+        if (!$row) {
+            throw new HttpException(404, 'not_found', 'Refund record not found.');
+        }
+        return self::map($row);
+    }
+
+    /** @param array<string,string> $filters @return array<int,array<string,mixed>> */
+    public static function listAdmin(array $filters = []): array
+    {
+        $pdo = Db::pdo();
+        $sql = 'SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.full_name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN users adm ON adm.id = rf.processed_by_admin_id WHERE 1=1';
+        $params = [];
+
+        if (!empty($filters['status'])) {
+            $sql .= ' AND rf.status = ?';
+            $params[] = $filters['status'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (r.name LIKE ? OR r.email LIKE ? OR r.code LIKE ? OR rf.destination_account LIKE ? OR rf.provider_refund_id LIKE ?)';
+            $term = "%{$filters['search']}%";
+            $params = array_merge($params, [$term, $term, $term, $term, $term]);
+        }
+
+        $sql .= ' ORDER BY rf.id DESC';
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        return array_map([self::class, 'map'], $st->fetchAll());
+    }
+
+    public static function approve(int $id, int $adminId, string $ip, ?string $notes = null): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $st = $pdo->prepare("UPDATE refunds SET status = 'processing', processed_by_admin_id = ?, notes = ?, updated_at = ? WHERE id = ? AND status = 'pending'");
+        $st->execute([$adminId, $notes, $now, $id]);
+        if ($st->rowCount() === 0) {
+            throw new HttpException(422, 'invalid_state', 'Refund cannot be approved in its current state.');
+        }
+        Auth::audit($adminId, 'refund.approve', 'refund', $id, $ip, 'Admin approved refund request to processing');
+        return self::getById($id);
+    }
+
+    public static function reject(int $id, int $adminId, string $reason, string $ip): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('SELECT * FROM refunds WHERE id = ? FOR UPDATE');
+            $st->execute([$id]);
+            $ref = $st->fetch();
+            if (!$ref || !in_array($ref['status'], ['pending', 'processing'], true)) {
+                throw new HttpException(422, 'invalid_state', 'Refund cannot be rejected in its current state.');
+            }
+
+            $up = $pdo->prepare("UPDATE refunds SET status = 'rejected', rejection_reason = ?, processed_by_admin_id = ?, updated_at = ? WHERE id = ?");
+            $up->execute([$reason, $adminId, $now, $id]);
+
+            $pdo->prepare("UPDATE registrations SET payment_status = 'paid', updated_at = ? WHERE id = ?")
+                ->execute([$now, $ref['registration_id']]);
+
+            Auth::audit($adminId, 'refund.reject', 'refund', $id, $ip, 'Admin rejected refund: ' . $reason);
+
+            $pdo->commit();
+            return self::getById($id);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    public static function complete(int $id, int $adminId, array $data, string $ip): array
+    {
+        $pdo = Db::pdo();
+        $now = Db::now();
+        $pdo->beginTransaction();
+        try {
+            $st = $pdo->prepare('SELECT * FROM refunds WHERE id = ? FOR UPDATE');
+            $st->execute([$id]);
+            $ref = $st->fetch();
+            if (!$ref || !in_array($ref['status'], ['pending', 'processing'], true)) {
+                throw new HttpException(422, 'invalid_state', 'Refund cannot be completed in its current state.');
+            }
+
+            $amount = isset($data['amount']) ? (float)$data['amount'] : (float)$ref['amount'];
+            $trxId = !empty($data['trxId']) ? trim($data['trxId']) : null;
+            $notes = !empty($data['notes']) ? trim($data['notes']) : $ref['notes'];
+            $receiptPath = !empty($data['receiptPath']) ? trim($data['receiptPath']) : $ref['receipt_path'];
+
+            $up = $pdo->prepare("UPDATE refunds SET status = 'completed', amount = ?, provider_refund_id = ?, notes = ?, receipt_path = ?, processed_by_admin_id = ?, updated_at = ? WHERE id = ?");
+            $up->execute([$amount, $trxId, $notes, $receiptPath, $adminId, $now, $id]);
+
+            $regId = (int)$ref['registration_id'];
+            $stReg = $pdo->prepare('SELECT * FROM registrations WHERE id = ? FOR UPDATE');
+            $stReg->execute([$regId]);
+            $reg = $stReg->fetch();
+
+            $newRefunded = (float)$reg['amount_refunded'] + $amount;
+            $amountPaid = (float)$reg['amount_paid'];
+            $isFullyRefunded = $newRefunded >= ($amountPaid - 0.01);
+
+            $newPaymentStatus = $isFullyRefunded ? 'refunded' : 'partially_refunded';
+            $newStatus = $isFullyRefunded ? 'cancelled' : $reg['status'];
+
+            $pdo->prepare('UPDATE registrations SET amount_refunded = ?, payment_status = ?, status = ?, updated_at = ? WHERE id = ?')
+                ->execute([$newRefunded, $newPaymentStatus, $newStatus, $now, $regId]);
+
+            if ($isFullyRefunded) {
+                $pdo->prepare("UPDATE tickets SET status = 'cancelled', updated_at = ? WHERE registration_id = ?")
+                    ->execute([$now, $regId]);
+            }
+
+            Auth::audit($adminId, 'refund.complete', 'refund', $id, $ip, 'Admin completed disbursement of BDT ' . $amount . ($trxId ? " (TrxID: $trxId)" : ''));
+
+            $pdo->commit();
+            return self::getById($id);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /** @param array<string,mixed> $r @return array<string,mixed> */
+    public static function map(array $r): array
+    {
+        return [
+            'id' => (string) $r['id'],
+            'registrationId' => (string) $r['registration_id'],
+            'amount' => (float) $r['amount'],
+            'reason' => $r['reason'],
+            'status' => $r['status'],
+            'provider' => $r['provider'],
+            'destinationAccount' => $r['destination_account'],
+            'accountHolderName' => $r['account_holder_name'],
+            'refundMethod' => $r['refund_method'],
+            'providerRefundId' => $r['provider_refund_id'],
+            'requestedByUserId' => $r['requested_by_user_id'] ? (string) $r['requested_by_user_id'] : null,
+            'requesterName' => $r['requester_name'] ?? null,
+            'processedByAdminId' => $r['processed_by_admin_id'] ? (string) $r['processed_by_admin_id'] : null,
+            'processedByName' => $r['processed_by_name'] ?? null,
+            'notes' => $r['notes'],
+            'rejectionReason' => $r['rejection_reason'],
+            'receiptPath' => $r['receipt_path'],
+            'createdAt' => $r['created_at'],
+            'updatedAt' => $r['updated_at'],
+            'registrationCode' => $r['reg_code'] ?? null,
+            'attendeeName' => $r['attendee_name'] ?? null,
+            'attendeeEmail' => $r['attendee_email'] ?? null,
+            'businessName' => $r['business_name'] ?? null,
+            'amountPaid' => isset($r['amount_paid']) ? (float) $r['amount_paid'] : 0,
+            'amountRefunded' => isset($r['amount_refunded']) ? (float) $r['amount_refunded'] : 0,
+            'masterclassId' => isset($r['mc_id']) ? (string) $r['mc_id'] : null,
+            'masterclassTitle' => $r['masterclass_title'] ?? null,
         ];
     }
 }
@@ -814,10 +1549,14 @@ final class AdminRepository
     public static function dashboard(): array
     {
         $pdo = Db::pdo();
-        $totalSmes = (int) $pdo->query('SELECT COUNT(*) FROM users WHERE status = \'active\'')->fetchColumn();
-        $totalRegs = (int) $pdo->query('SELECT COUNT(*) FROM registrations WHERE status <> \'cancelled\'')->fetchColumn();
-        $paidRev = (float) $pdo->query('SELECT COALESCE(SUM(amount), 0) FROM registrations WHERE payment_status = \'paid\'')->fetchColumn();
+        $totalSmes = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active'")->fetchColumn();
+        $totalRegs = (int) $pdo->query("SELECT COUNT(*) FROM registrations WHERE status <> 'cancelled'")->fetchColumn();
+        $totalPaid = (float) $pdo->query("SELECT COALESCE(SUM(amount_paid), 0) FROM registrations WHERE payment_status IN ('paid', 'partially_refunded', 'refunded')")->fetchColumn();
+        $totalRefunded = (float) $pdo->query("SELECT COALESCE(SUM(amount_refunded), 0) FROM registrations")->fetchColumn();
+        $netRev = max(0, $totalPaid - $totalRefunded);
         $totalChecks = (int) $pdo->query('SELECT COUNT(*) FROM assessment_results')->fetchColumn();
+        $pendingVerifications = (int) $pdo->query("SELECT COUNT(*) FROM payment_submissions WHERE status = 'pending'")->fetchColumn();
+        $pendingRefunds = (int) $pdo->query("SELECT COUNT(*) FROM refunds WHERE status IN ('pending', 'processing')")->fetchColumn();
 
         // Readiness distribution
         $distRows = $pdo->query('SELECT band, COUNT(*) AS cnt FROM assessment_results GROUP BY band')->fetchAll(\PDO::FETCH_KEY_PAIR);
@@ -831,7 +1570,11 @@ final class AdminRepository
         return [
             'totalSmes' => $totalSmes,
             'totalRegistrations' => $totalRegs,
-            'totalRevenue' => $paidRev,
+            'totalRevenue' => $netRev,
+            'grossRevenue' => $totalPaid,
+            'totalRefunded' => $totalRefunded,
+            'pendingVerifications' => $pendingVerifications,
+            'pendingRefunds' => $pendingRefunds,
             'readinessChecks' => $totalChecks,
             'distribution' => $distribution,
         ];

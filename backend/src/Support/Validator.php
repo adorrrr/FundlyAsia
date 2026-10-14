@@ -259,4 +259,95 @@ final class Validator
             'amountRange' => is_string($in['amountRange'] ?? null) ? trim($in['amountRange']) : null,
         ];
     }
+
+    /** @param array<string,mixed> $in @return array<string,mixed> */
+    public static function paymentSubmission(array $in): array
+    {
+        $e = [];
+        $methods = ['bkash', 'nagad', 'rocket', 'upay', 'bank_transfer', 'other'];
+        $method = is_string($in['paymentMethod'] ?? null) ? strtolower(trim($in['paymentMethod'])) : '';
+        if ($method === '' || !in_array($method, $methods, true)) {
+            $e['paymentMethod'] = 'Please select a valid payment method.';
+        }
+
+        $sender = is_string($in['senderAccount'] ?? null) ? trim($in['senderAccount']) : '';
+        if ($sender === '' || strlen($sender) < 4 || strlen($sender) > 80) {
+            $e['senderAccount'] = 'Valid sender mobile or account number is required.';
+        }
+
+        $trxId = is_string($in['trxId'] ?? null) ? strtoupper(trim($in['trxId'])) : '';
+        if ($trxId === '' || strlen($trxId) < 3 || strlen($trxId) > 120) {
+            $e['trxId'] = 'Transaction ID or reference number is required.';
+        }
+
+        $amount = $in['amount'] ?? 0;
+        if (!is_numeric($amount) || (float) $amount <= 0) {
+            $e['amount'] = 'Amount must be greater than 0.';
+        }
+
+        if (empty($in['accuracyConfirmed'])) {
+            $e['accuracyConfirmed'] = 'You must confirm that the submitted details are accurate.';
+        }
+
+        if ($e) {
+            throw new HttpException(422, 'validation', 'Please check the highlighted fields.', $e);
+        }
+
+        return [
+            'paymentMethod' => $method,
+            'senderAccount' => $sender,
+            'trxId' => $trxId,
+            'amount' => round((float) $amount, 2),
+            'paidAt' => is_string($in['paidAt'] ?? null) && trim($in['paidAt']) !== '' ? trim($in['paidAt']) : null,
+            'receiptPath' => is_string($in['receiptPath'] ?? null) && trim($in['receiptPath']) !== '' ? trim($in['receiptPath']) : null,
+        ];
+    }
+
+    /** @param array<string,mixed> $in @return array<string,mixed> */
+    public static function userRefundRequest(array $in): array
+    {
+        $e = [];
+        $reason = is_string($in['reason'] ?? null) ? trim($in['reason']) : '';
+        if ($reason === '' || strlen($reason) < 5) {
+            $e['reason'] = 'Please provide a clear reason for the refund request.';
+        }
+
+        $amount = $in['amount'] ?? 0;
+        if (!is_numeric($amount) || (float) $amount <= 0) {
+            $e['amount'] = 'Refund amount must be greater than 0.';
+        }
+
+        $methods = ['bkash', 'nagad', 'rocket', 'upay', 'bank_transfer', 'other'];
+        $method = is_string($in['refundMethod'] ?? null) ? strtolower(trim($in['refundMethod'])) : '';
+        if ($method === '' || !in_array($method, $methods, true)) {
+            $e['refundMethod'] = 'Please select a payout method.';
+        }
+
+        $dest = is_string($in['destinationAccount'] ?? null) ? trim($in['destinationAccount']) : '';
+        if ($dest === '' || strlen($dest) < 4 || strlen($dest) > 80) {
+            $e['destinationAccount'] = 'Valid destination mobile or account number is required.';
+        }
+
+        $holder = is_string($in['accountHolderName'] ?? null) ? trim($in['accountHolderName']) : '';
+        if ($method === 'bank_transfer' && $holder === '') {
+            $e['accountHolderName'] = 'Account holder name is required for bank transfer.';
+        }
+
+        if (empty($in['accuracyConfirmed'])) {
+            $e['accuracyConfirmed'] = 'You must confirm that the refund information is accurate.';
+        }
+
+        if ($e) {
+            throw new HttpException(422, 'validation', 'Please check the highlighted fields.', $e);
+        }
+
+        return [
+            'reason' => $reason,
+            'amount' => round((float) $amount, 2),
+            'refundMethod' => $method,
+            'destinationAccount' => $dest,
+            'accountHolderName' => $holder !== '' ? $holder : null,
+            'receiptPath' => is_string($in['receiptPath'] ?? null) && trim($in['receiptPath']) !== '' ? trim($in['receiptPath']) : null,
+        ];
+    }
 }
