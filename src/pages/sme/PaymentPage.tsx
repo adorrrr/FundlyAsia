@@ -5,12 +5,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  FileText,
   MapPin,
   ShieldCheck,
   Ticket,
-  UploadCloud,
-  X,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
@@ -43,8 +40,6 @@ export default function PaymentPage() {
   const [senderAccount, setSenderAccount] = useState('');
   const [trxId, setTrxId] = useState('');
   const [amount, setAmount] = useState('');
-  const [receiptPath, setReceiptPath] = useState<string | null>(null);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [confirmAccurate, setConfirmAccurate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
@@ -75,27 +70,6 @@ export default function PaymentPage() {
   if (current.paymentStatus === 'not_required') {
     return <Navigate to={`/masterclasses/${m.id}/confirmation?reg=${current.id}`} replace />;
   }
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 4 * 1024 * 1024) {
-      toast('Receipt image must be smaller than 4 MB.', 'error');
-      return;
-    }
-
-    setUploadingReceipt(true);
-    try {
-      const res = await manualPaymentApi.uploadReceipt(file);
-      setReceiptPath(res.url);
-      toast('Receipt uploaded successfully.', 'success');
-    } catch (err: unknown) {
-      toast(err instanceof Error ? err.message : 'Receipt upload failed.', 'error');
-    } finally {
-      setUploadingReceipt(false);
-    }
-  };
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -138,7 +112,6 @@ export default function PaymentPage() {
         senderAccount: senderAccount.trim(),
         trxId: trxId.trim().toUpperCase(),
         amount: parseFloat(amount),
-        receiptPath: receiptPath || undefined,
         confirmAccurate: true,
         accuracyConfirmed: true,
       });
@@ -406,40 +379,6 @@ export default function PaymentPage() {
                     error={errors.amount}
                     required
                   />
-                </div>
-
-                {/* Receipt Upload */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-meta font-medium text-ink">
-                    Payment Receipt / Screenshot (Optional, Recommended)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line bg-paper/60 px-4 py-3 text-meta text-slate hover:border-brand hover:bg-paper">
-                      <UploadCloud className="h-4 w-4 text-brand-mark" />
-                      <span>{uploadingReceipt ? 'Uploading...' : 'Upload receipt (JPG, PNG, PDF)'}</span>
-                      <input
-                        type="file"
-                        accept="image/*,application/pdf"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        disabled={uploadingReceipt}
-                      />
-                    </label>
-
-                    {receiptPath && (
-                      <div className="flex items-center gap-2 rounded-lg bg-ok-soft px-3 py-1.5 text-meta font-medium text-ok">
-                        <FileText className="h-4 w-4" />
-                        <span>Receipt attached</span>
-                        <button
-                          type="button"
-                          onClick={() => setReceiptPath(null)}
-                          className="text-slate hover:text-bad"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Accuracy Confirmation Checkbox */}
