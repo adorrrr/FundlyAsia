@@ -178,6 +178,7 @@ final class Auth
     public static function signupUser(string $fullName, string $email, string $password, string $ip): array
     {
         $pdo = Db::pdo();
+        self::purgeExpiredOtps();
         self::checkThrottle($email, $ip);
 
         $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
@@ -206,15 +207,26 @@ final class Auth
         ];
     }
 
+    /** Purges expired OTP codes and their metadata from otp_codes (after 5 minutes) */
+    public static function purgeExpiredOtps(): void
+    {
+        Db::pdo()->prepare('DELETE FROM otp_codes WHERE expires_at < ?')->execute([Db::now()]);
+    }
+
     /** Generates a 6-digit OTP and persists its hash and optional metadata */
     public static function generateOtp(string $email, string $purpose = 'signup', ?string $metadata = null): string
     {
         $pdo = Db::pdo();
-        // If metadata is null and purpose is signup, preserve existing metadata
+        self::purgeExpiredOtps();
+
+        // If metadata is null and purpose is signup, preserve existing metadata only if not expired
         if ($metadata === null && $purpose === 'signup') {
-            $prevSt = $pdo->prepare('SELECT metadata FROM otp_codes WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1');
-            $prevSt->execute([$email, $purpose]);
+            $prevSt = $pdo->prepare('SELECT metadata FROM otp_codes WHERE email = ? AND purpose = ? AND expires_at >= ? ORDER BY id DESC LIMIT 1');
+            $prevSt->execute([$email, $purpose, Db::now()]);
             $metadata = $prevSt->fetchColumn() ?: null;
+            if (!$metadata) {
+                throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
+            }
         }
 
         // Generate random 6-digit string
@@ -237,6 +249,7 @@ final class Auth
         $pdo = Db::pdo();
         $now = Db::now();
 
+        self::purgeExpiredOtps();
         self::checkThrottle($email, $ip);
 
         // In non-production environments, 123456 is accepted as demo OTP
@@ -246,12 +259,10 @@ final class Auth
         $st->execute([$email, $purpose]);
         $row = $st->fetch();
 
-        if (!$row) {
-            throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
-        }
-
-        if ($row['expires_at'] < $now) {
-            $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
+        if (!$row || $row['expires_at'] < $now) {
+            if ($row) {
+                $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
+            }
             throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
         }
 
@@ -346,6 +357,7 @@ final class Auth
     /** Cancels pending signup OTP and registration data */
     public static function cancelSignup(string $email): void
     {
+        self::purgeExpiredOtps();
         Db::pdo()->prepare('DELETE FROM otp_codes WHERE email = ? AND purpose = ?')->execute([$email, 'signup']);
     }
 
