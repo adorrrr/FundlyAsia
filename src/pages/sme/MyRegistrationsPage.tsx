@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CreditCard, RefreshCw, Ticket } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
@@ -20,6 +20,15 @@ export default function MyRegistrationsPage() {
   const { user } = useAuth();
   const regs = useAsync(() => registrationService.listMine(user!.id), [user?.id]);
   const classes = useAsync(() => masterclassService.listPublic(), []);
+
+  useEffect(() => {
+    const handler = () => {
+      regs.reload();
+      classes.reload();
+    };
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [regs, classes]);
 
   const [selectedTicketReg, setSelectedTicketReg] = useState<string | null>(null);
 

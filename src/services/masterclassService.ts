@@ -64,7 +64,10 @@ export const mockMasterclassService: MasterclassService = {
     db.update((s) => {
       const i = s.masterclasses.findIndex((x) => x.id === id);
       if (i < 0) throw new ServiceError('not_found');
-      if (s.registrations.some((r) => r.masterclassId === id)) throw new ServiceError('has_registrations');
+      if (s.registrations.some((r) => r.masterclassId === id && r.status !== 'cancelled')) {
+        throw new ServiceError('has_registrations');
+      }
+      s.registrations = s.registrations.filter((r) => r.masterclassId !== id);
       s.masterclasses.splice(i, 1);
     });
   },

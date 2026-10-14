@@ -1,7 +1,7 @@
+import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ClipboardList, Ticket } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
-import type { ReactNode } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useAsync } from '@/hooks/useAsync';
@@ -42,6 +42,15 @@ export default function DashboardPage() {
   const regs = useAsync(() => registrationService.listMine(uid), [uid]);
   const draft = useAsync(() => eligibilityService.getDraft(uid), [uid]);
   const results = useAsync(() => eligibilityService.listResults(uid), [uid]);
+
+  useEffect(() => {
+    const handler = () => {
+      classes.reload();
+      regs.reload();
+    };
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [classes, regs]);
 
   const loading = profile.loading || classes.loading || regs.loading || draft.loading || results.loading;
   const upcoming = (classes.data ?? []).filter((m) => registrationAvailability(m).open).slice(0, 3);

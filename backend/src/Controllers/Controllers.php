@@ -740,6 +740,15 @@ final class AdminController
         Response::json($res);
     }
 
+    public static function directRefund(Request $req): void
+    {
+        $admin = Auth::requireAdmin();
+        $id = $req->params['id'];
+        $b = $req->json();
+        $res = \Fundly\Repositories\RefundRepository::adminDirectRefund($id, (int) $admin['id'], $b, $req->ip());
+        Response::json($res);
+    }
+
     public static function roster(Request $req): void
     {
         Auth::requireAdmin();

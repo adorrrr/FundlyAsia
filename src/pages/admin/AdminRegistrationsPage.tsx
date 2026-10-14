@@ -96,6 +96,14 @@ export default function AdminRegistrationsPage() {
   const [disbursementTrxId, setDisbursementTrxId] = useState('');
   const [disbursementNotes, setDisbursementNotes] = useState('');
 
+  // Direct Admin Refund Modal
+  const [directRefundReg, setDirectRefundReg] = useState<Registration | null>(null);
+  const [directRefundAmount, setDirectRefundAmount] = useState<number>(0);
+  const [directRefundReason, setDirectRefundReason] = useState('Masterclass session cancelled by organizer');
+  const [directRefundMethod, setDirectRefundMethod] = useState('bkash');
+  const [directRefundDest, setDirectRefundDest] = useState('');
+  const [directRefundTrx, setDirectRefundTrx] = useState('');
+
   const [busy, setBusy] = useState(false);
 
   const fetchSubmissions = useCallback(() => {
@@ -120,6 +128,18 @@ export default function AdminRegistrationsPage() {
     fetchSubmissions();
     fetchRefunds();
   }, [fetchSubmissions, fetchRefunds]);
+
+  // Synchronize immediately when masterclasses or registrations are updated anywhere
+  useEffect(() => {
+    const handler = () => {
+      regs.reload();
+      classes.reload();
+      fetchSubmissions();
+      fetchRefunds();
+    };
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [regs, classes, fetchSubmissions, fetchRefunds]);
 
   const titleOf = (id: string) => l(classes.data?.find((m) => m.id === id)?.title);
 
@@ -278,6 +298,34 @@ export default function AdminRegistrationsPage() {
       regs.reload();
     } catch (err: unknown) {
       toast(err instanceof Error ? err.message : 'Disbursement recording failed.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDirectRefund = async () => {
+    if (!directRefundReg || !directRefundReason.trim()) {
+      toast('A refund reason is required.', 'error');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await manualPaymentApi.directRefund(directRefundReg.id, {
+        amount: Number(directRefundAmount) || undefined,
+        reason: directRefundReason.trim(),
+        destinationAccount: directRefundDest.trim() || undefined,
+        refundMethod: directRefundMethod,
+        trxId: directRefundTrx.trim() || undefined,
+      });
+      replace(res.registration);
+      toast(`Refund processed and seat released for ${directRefundReg.name}!`, 'success');
+      setDirectRefundReg(null);
+      setManaging(null);
+      regs.reload();
+      classes.reload();
+      fetchRefunds();
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Refund failed.', 'error');
     } finally {
       setBusy(false);
     }
@@ -838,6 +886,31 @@ export default function AdminRegistrationsPage() {
               </div>
             </div>
 
+            {/* Direct Refund & Seat Release */}
+            {(managing.amountPaid || 0) > 0 && ((managing.amountPaid || 0) - (managing.amountRefunded || 0)) > 0 && (
+              <div className="rounded-xl border border-brand/30 bg-brand-soft/20 p-4">
+                <p className="text-meta font-bold text-brand-deep">Direct Refund & Seat Release</p>
+                <p className="mt-1 text-meta text-slate">
+                  Issue an immediate refund of {formatMoney((managing.amountPaid || 0) - (managing.amountRefunded || 0))} to this attendee and automatically release their seat.
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    setDirectRefundReg(managing);
+                    setDirectRefundAmount((managing.amountPaid || 0) - (managing.amountRefunded || 0));
+                    setDirectRefundReason('Masterclass session cancelled by organizer - seat released');
+                    setDirectRefundMethod('bkash');
+                    setDirectRefundDest('');
+                    setDirectRefundTrx('');
+                    setManaging(null);
+                  }}
+                >
+                  Issue Direct Refund
+                </Button>
+              </div>
+            )}
+
             {/* Admin Cancel Registration */}
             {managing.status !== 'cancelled' && (
               <div className="rounded-xl border border-bad/30 bg-bad-soft/30 p-4">
@@ -919,6 +992,98 @@ export default function AdminRegistrationsPage() {
               onChange={(e) => setCancelReason(e.target.value)}
               required
             />
+          </div>
+        )}
+      </Dialog>
+
+      {/* DIRECT ADMIN REFUND & CANCEL MODAL */}
+      <Dialog
+        open={!!directRefundReg}
+        onClose={() => !busy && setDirectRefundReg(null)}
+        title="Process Direct Refund & Release Seat"
+        description={directRefundReg ? `Issue an immediate refund and cancel registration for ${directRefundReg.name} (${directRefundReg.id}).` : undefined}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDirectRefundReg(null)} disabled={busy}>
+              Keep Seat
+            </Button>
+            <Button variant="danger" onClick={handleDirectRefund} loading={busy}>
+              Confirm Refund & Release Seat
+            </Button>
+          </>
+        }
+      >
+        {directRefundReg && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-paper p-3 text-meta">
+              <p className="font-semibold text-ink">{directRefundReg.name}</p>
+              <p className="text-slate">{directRefundReg.email} · {directRefundReg.businessName}</p>
+              <p className="mt-1 font-mono font-bold text-brand-deep">
+                Paid: {formatMoney(directRefundReg.amountPaid || 0)} · Refunded: {formatMoney(directRefundReg.amountRefunded || 0)}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-meta font-medium text-ink mb-1">Refund Amount (BDT) *</label>
+              <input
+                type="number"
+                min="0"
+                max={(directRefundReg.amountPaid || 0) - (directRefundReg.amountRefunded || 0)}
+                step="0.01"
+                value={directRefundAmount}
+                onChange={(e) => setDirectRefundAmount(parseFloat(e.target.value) || 0)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-meta font-medium text-ink mb-1">Refund Method</label>
+              <select
+                value={directRefundMethod}
+                onChange={(e) => setDirectRefundMethod(e.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
+              >
+                <option value="bkash">bKash</option>
+                <option value="nagad">Nagad</option>
+                <option value="rocket">Rocket</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash">Cash / Manual</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-meta font-medium text-ink mb-1">Destination Account / Mobile</label>
+              <input
+                type="text"
+                placeholder="e.g. 017XXXXXXXX"
+                value={directRefundDest}
+                onChange={(e) => setDirectRefundDest(e.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-meta font-medium text-ink mb-1">Disbursement TrxID (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. TRX123456"
+                value={directRefundTrx}
+                onChange={(e) => setDirectRefundTrx(e.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-meta font-medium text-ink mb-1">Reason for Refund *</label>
+              <textarea
+                rows={2}
+                value={directRefundReason}
+                onChange={(e) => setDirectRefundReason(e.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-meta text-ink focus:border-brand focus:outline-none"
+                required
+              />
+            </div>
           </div>
         )}
       </Dialog>

@@ -68,6 +68,7 @@ return static function (Router $r): void {
     $r->add('POST', '/admin/registrations/{id}/cancel', [AdminController::class, 'cancelRegistration']);
     $r->add('PATCH', '/admin/registrations/{id}/attendance', [AdminController::class, 'updateAttendance']);
     $r->add('PATCH', '/admin/registrations/{id}/payment', [AdminController::class, 'correctPayment']);
+    $r->add('POST', '/admin/registrations/{id}/direct-refund', [AdminController::class, 'directRefund']);
     $r->add('GET', '/admin/payment-submissions', [AdminController::class, 'paymentSubmissions']);
     $r->add('POST', '/admin/payment-submissions/{id}/approve', [AdminController::class, 'approveSubmission']);
     $r->add('POST', '/admin/payment-submissions/{id}/reject', [AdminController::class, 'rejectSubmission']);

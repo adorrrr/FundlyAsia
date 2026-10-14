@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { ServiceError } from '@/services/errors';
 import { Dialog } from '@/components/ui/Dialog';
@@ -16,6 +16,7 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
 import { AdminRosterModal } from '@/components/masterclasses/AdminRosterModal';
 import { useToast } from '@/components/ui/Toast';
+import { notifyMasterclassesChanged } from '@/services/api/manualPaymentApi';
 
 export const MC_STATUSES: MasterclassStatus[] = ['draft', 'published', 'registration_open', 'registration_closed', 'completed', 'cancelled'];
 
@@ -24,10 +25,20 @@ export default function AdminMasterclassesPage() {
   const a = d.admin.mc;
   useDocumentTitle(a.title);
   const toast = useToast();
-  const { data, loading, reload } = useAsync(() => masterclassService.listAll(), []);
+  const { data, loading, reload, setData } = useAsync(() => masterclassService.listAll(), []);
   const regs = useAsync(() => registrationService.listAll(), []);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | MasterclassStatus>('all');
+
+  // React to updates from other tabs or modals (e.g. refunds in roster modal)
+  useEffect(() => {
+    const handler = () => {
+      reload();
+      regs.reload();
+    };
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [reload, regs]);
 
   const rows = useMemo(() => {
     const query = q.toLowerCase();
@@ -43,22 +54,29 @@ export default function AdminMasterclassesPage() {
     setDeleting(true);
     try {
       await masterclassService.remove(toDelete.id);
+      setData((prev) => prev?.filter((x) => x.id !== toDelete.id));
       toast(a.deleted);
       setToDelete(null);
+      notifyMasterclassesChanged();
       reload();
+      regs.reload();
     } catch (e) {
-      toast(e instanceof ServiceError && e.code === 'has_registrations' ? a.deleteHasRegs : a.deleteFailed, 'error');
+      toast(e instanceof ServiceError && e.code === 'has_registrations' ? 'Cannot delete: active registrations exist. Please refund or cancel attendees first.' : a.deleteFailed, 'error');
     } finally {
       setDeleting(false);
     }
   };
 
   const changeStatus = async (m: Masterclass, s: MasterclassStatus) => {
+    const oldStatus = m.status;
+    setData((prev) => prev?.map((item) => (item.id === m.id ? { ...item, status: s } : item)));
     try {
       await masterclassService.setStatus(m.id, s);
-      toast(a.updated);
+      toast(s === 'cancelled' ? 'Masterclass session marked as Cancelled. Registrations closed.' : a.updated);
+      notifyMasterclassesChanged();
       reload();
     } catch (err: unknown) {
+      setData((prev) => prev?.map((item) => (item.id === m.id ? { ...item, status: oldStatus } : item)));
       toast(err instanceof Error ? err.message : d.common.errorTitle, 'error');
     }
   };
@@ -93,7 +111,15 @@ export default function AdminMasterclassesPage() {
               ),
             },
             { key: 'd', header: d.mc.date, cell: (m) => formatDate(m.date), hideBelow: 'md' },
-            { key: 'r', header: a.registrations, cell: (m) => <span className="tnum">{formatNumber((regs.data ?? []).filter((r) => r.masterclassId === m.id).length)} / {formatNumber(m.capacity)}</span>, hideBelow: 'lg' },
+            {
+              key: 'r',
+              header: a.registrations,
+              cell: (m) => {
+                const activeCount = (regs.data ?? []).filter((r) => r.masterclassId === m.id && r.status !== 'cancelled').length;
+                return <span className="tnum font-medium">{formatNumber(activeCount)} / {formatNumber(m.capacity)}</span>;
+              },
+              hideBelow: 'lg',
+            },
             { key: 'f', header: d.mc.fee, cell: (m) => <span className="tnum">{formatMoney(m.fee)}</span>, hideBelow: 'xl' },
             {
               key: 's',
@@ -130,19 +156,62 @@ export default function AdminMasterclassesPage() {
           ]}
         />
       )}
-      <Dialog
-        open={!!toDelete}
-        onClose={() => !deleting && setToDelete(null)}
-        title={a.deleteTitle}
-        description={toDelete ? a.deleteBody.replace('{title}', l(toDelete.title)) : undefined}
-        size="sm"
-        footer={
-          <>
-            <Button variant="secondary" data-autofocus onClick={() => setToDelete(null)} disabled={deleting}>{d.common.cancel}</Button>
-            <Button variant="danger" onClick={confirmDelete} loading={deleting}>{a.delete}</Button>
-          </>
-        }
-      />
+      {toDelete && (() => {
+        const activeSeats = (regs.data ?? []).filter((r) => r.masterclassId === toDelete.id && r.status !== 'cancelled').length;
+        const hasActive = activeSeats > 0;
+        return (
+          <Dialog
+            open={!!toDelete}
+            onClose={() => !deleting && setToDelete(null)}
+            title={a.deleteTitle}
+            description={hasActive ? undefined : a.deleteBody.replace('{title}', l(toDelete.title))}
+            size="sm"
+            footer={
+              <>
+                <Button variant="secondary" data-autofocus onClick={() => setToDelete(null)} disabled={deleting}>
+                  {d.common.cancel}
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={confirmDelete}
+                  loading={deleting}
+                  disabled={deleting || hasActive}
+                >
+                  {a.delete}
+                </Button>
+              </>
+            }
+          >
+            {hasActive && (
+              <div className="space-y-3">
+                <p className="text-body text-slate">
+                  {a.deleteBody.replace('{title}', l(toDelete.title))}
+                </p>
+                <div className="rounded-xl border border-bad/30 bg-bad-soft/30 p-4 text-meta text-bad">
+                  <p className="font-bold">Cannot Delete: Active Registrations Exist</p>
+                  <p className="mt-1 text-slate">
+                    This masterclass currently has <strong className="text-bad">{activeSeats}</strong> active registered attendee(s).
+                    Please refund or cancel all registered attendees before deleting this session. Once refunded/cancelled, the seat count returns to 0 and you can delete it.
+                  </p>
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={<Users className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        setRosterMc(toDelete);
+                        setToDelete(null);
+                      }}
+                    >
+                      Open Attendee Roster & Refund
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Dialog>
+        );
+      })()}
 
       {rosterMc && (
         <AdminRosterModal

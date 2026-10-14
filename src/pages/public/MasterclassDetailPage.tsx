@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Check, ChevronLeft, Info, UserRound } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -19,7 +20,14 @@ export default function MasterclassDetailPage() {
   const { d, l, t, formatDate, formatMoney, formatNumber } = useI18n();
   const { user } = useAuth();
   const reduce = useReducedMotion();
-  const { data: m, loading, error } = useAsync(() => masterclassService.get(id), [id]);
+  const { data: m, loading, error, reload } = useAsync(() => masterclassService.get(id), [id]);
+
+  useEffect(() => {
+    const handler = () => reload();
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [reload]);
+
   const { data: speaker } = useAsync(async () => (m?.speakerId ? (await masterclassService.listSpeakers()).find((s) => s.id === m.speakerId) : undefined), [m?.speakerId]);
   const { data: mine } = useAsync(async () => (user?.role === 'sme' ? registrationService.listMine(user.id) : []), [user?.id]);
   const availText = useAvailabilityText();

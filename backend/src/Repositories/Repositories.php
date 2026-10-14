@@ -135,17 +135,19 @@ final class MasterclassRepository
         }
     }
 
-    /** Deletes a masterclass unless registrations reference it. */
+    /** Deletes a masterclass when active registrations are 0. */
     public static function delete(int $id): void
     {
         $pdo = Db::pdo();
         $pdo->beginTransaction();
         try {
-            $st = $pdo->prepare('SELECT COUNT(*) FROM registrations WHERE masterclass_id = ?');
+            $st = $pdo->prepare("SELECT COUNT(*) FROM registrations WHERE masterclass_id = ? AND status <> 'cancelled'");
             $st->execute([$id]);
-            if ((int) $st->fetchColumn() > 0) {
-                throw new HttpException(409, 'has_registrations', 'This masterclass has registrations and cannot be deleted.');
+            $activeCount = (int) $st->fetchColumn();
+            if ($activeCount > 0) {
+                throw new HttpException(409, 'has_active_registrations', 'This masterclass has ' . $activeCount . ' active registration(s). Please refund and cancel all attendees before deleting.');
             }
+            $pdo->prepare('DELETE FROM registrations WHERE masterclass_id = ?')->execute([$id]);
             $st = $pdo->prepare('DELETE FROM masterclasses WHERE id = ?');
             $st->execute([$id]);
             if ($st->rowCount() === 0) {
@@ -156,7 +158,7 @@ final class MasterclassRepository
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            // A registration inserted concurrently trips the RESTRICT foreign key.
+            // A registration inserted concurrently trips the foreign key.
             if ($e instanceof \PDOException && in_array((string) $e->getCode(), ['23000', '23503'], true)) {
                 throw new HttpException(409, 'has_registrations', 'This masterclass has registrations and cannot be deleted.');
             }
@@ -1116,6 +1118,85 @@ final class RefundRepository
 
             $pdo->commit();
             return self::getById($id);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Admin directly issues/records a refund and cancels registration/releases seat.
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>
+     */
+    public static function adminDirectRefund(int|string $registrationId, int $adminId, array $data, string $ip): array
+    {
+        $pdo = Db::pdo();
+        $isCode = str_starts_with((string) $registrationId, 'FL-');
+        $st = $pdo->prepare('SELECT * FROM registrations WHERE ' . ($isCode ? 'code = ?' : 'id = ?') . ' FOR UPDATE');
+        $pdo->beginTransaction();
+        try {
+            $st->execute([$isCode ? (string) $registrationId : (int) $registrationId]);
+            $reg = $st->fetch();
+            if (!$reg) {
+                throw new HttpException(404, 'not_found', 'Registration not found.');
+            }
+
+            $amountPaid = (float) $reg['amount_paid'];
+            $amountRefunded = (float) $reg['amount_refunded'];
+            $maxRefundable = max(0.0, $amountPaid - $amountRefunded);
+
+            $amount = isset($data['amount']) ? (float) $data['amount'] : $maxRefundable;
+            if ($amountPaid > 0 && ($amount <= 0 || $amount > $maxRefundable + 0.01)) {
+                throw new HttpException(422, 'invalid_amount', 'Refund amount cannot exceed remaining balance (BDT ' . number_format($maxRefundable, 2) . ').');
+            }
+
+            $reason = !empty($data['reason']) ? trim((string) $data['reason']) : 'Admin processed refund & cancellation';
+            $dest = !empty($data['destinationAccount']) ? trim((string) $data['destinationAccount']) : null;
+            $method = !empty($data['refundMethod']) ? trim((string) $data['refundMethod']) : 'manual';
+            $trxId = !empty($data['trxId']) ? trim((string) $data['trxId']) : null;
+            $notes = !empty($data['notes']) ? trim((string) $data['notes']) : null;
+            $now = Db::now();
+
+            $refId = null;
+            if ($amountPaid > 0) {
+                $ins = $pdo->prepare('INSERT INTO refunds (registration_id, amount, reason, status, provider, destination_account, refund_method, provider_refund_id, notes, requested_by_admin_id, processed_by_admin_id, created_at, updated_at) VALUES (?, ?, ?, \'completed\', \'manual\', ?, ?, ?, ?, ?, ?, ?, ?)');
+                $ins->execute([
+                    $reg['id'],
+                    $amount,
+                    $reason,
+                    $dest,
+                    $method,
+                    $trxId,
+                    $notes,
+                    $adminId,
+                    $adminId,
+                    $now,
+                    $now,
+                ]);
+                $refId = (int) $pdo->lastInsertId();
+            }
+
+            $newRefunded = $amountRefunded + $amount;
+            $isFullyRefunded = $amountPaid <= 0 || $newRefunded >= ($amountPaid - 0.01);
+            $newPaymentStatus = $amountPaid <= 0 ? 'not_required' : ($isFullyRefunded ? 'refunded' : 'partially_refunded');
+            $newStatus = 'cancelled';
+
+            $pdo->prepare('UPDATE registrations SET amount_refunded = ?, payment_status = ?, status = ?, cancellation_reason = ?, cancelled_at = ?, cancelled_by_admin_id = ?, updated_at = ? WHERE id = ?')
+                ->execute([$newRefunded, $newPaymentStatus, $newStatus, $reason, $now, $adminId, $now, $reg['id']]);
+
+            $pdo->prepare("UPDATE tickets SET status = 'cancelled', updated_at = ? WHERE registration_id = ?")
+                ->execute([$now, $reg['id']]);
+
+            Auth::audit($adminId, 'refund.direct', 'refund', $refId ?? (int) $reg['id'], $ip, 'Admin issued direct refund of BDT ' . $amount . ': ' . $reason);
+
+            $pdo->commit();
+            return [
+                'refund' => $refId ? self::getById($refId) : null,
+                'registration' => RegistrationRepository::findById((int) $reg['id'], null),
+            ];
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();

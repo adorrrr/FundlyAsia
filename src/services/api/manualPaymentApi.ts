@@ -178,4 +178,35 @@ export const manualPaymentApi = {
       json: { ticketNumber, masterclassId },
     });
   },
+
+  /** Admin direct refund & registration cancellation */
+  async directRefund(
+    registrationId: string | number,
+    payload: {
+      amount?: number;
+      reason: string;
+      destinationAccount?: string;
+      refundMethod?: string;
+      trxId?: string;
+      notes?: string;
+    }
+  ): Promise<{ refund: RefundRecord | null; registration: Registration }> {
+    const res = await apiRequest<{ refund: RefundRecord | null; registration: Registration }>(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/direct-refund`,
+      {
+        method: 'POST',
+        json: payload,
+      }
+    );
+    notifyMasterclassesChanged();
+    return res;
+  },
 };
+
+/** Broadcast an event across the window so all pages/tabs reload masterclasses */
+export function notifyMasterclassesChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('fundly:masterclasses-updated'));
+  }
+}
+

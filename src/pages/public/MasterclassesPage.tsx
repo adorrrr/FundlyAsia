@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarX2 } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
@@ -20,6 +20,13 @@ export default function MasterclassesPage() {
   const { d, l, formatMoney } = useI18n();
   useDocumentTitle(d.mc.listTitle);
   const { data, loading, error, reload } = useAsync(() => masterclassService.listPublic(), []);
+
+  useEffect(() => {
+    const handler = () => reload();
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [reload]);
+
   const speakers = useSpeakers();
   const [q, setQ] = useState('');
 

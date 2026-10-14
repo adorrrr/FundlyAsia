@@ -3,6 +3,7 @@ import { ApiError, apiRequest } from './client';
 import { loadSession } from './authApi';
 import { ServiceError } from '../errors';
 import type { MasterclassInput, MasterclassService } from '../masterclassService';
+import { notifyMasterclassesChanged } from './manualPaymentApi';
 
 /** Maps transport/API failures onto the errors the UI already knows how to explain. */
 async function guard<T>(run: () => Promise<T>): Promise<T> {
@@ -10,7 +11,7 @@ async function guard<T>(run: () => Promise<T>): Promise<T> {
     return await run();
   } catch (e) {
     if (e instanceof ApiError) {
-      if (e.code === 'has_registrations') throw new ServiceError('has_registrations');
+      if (e.code === 'has_registrations' || e.code === 'has_active_registrations') throw new ServiceError('has_registrations');
       if (e.status === 404) throw new ServiceError('not_found');
       if (e.status === 422) throw new ServiceError('validation');
     }
@@ -47,15 +48,24 @@ export const apiMasterclassService: MasterclassService = {
   },
   async create(input: MasterclassInput) {
     const cover = await persistImage(input.cover).catch(() => Promise.reject(new ServiceError('unavailable')));
-    return guard(() => apiRequest<Masterclass>('/admin/masterclasses', { method: 'POST', json: { ...input, cover } }));
+    const res = await guard(() => apiRequest<Masterclass>('/admin/masterclasses', { method: 'POST', json: { ...input, cover } }));
+    notifyMasterclassesChanged();
+    return res;
   },
   async update(id, input: MasterclassInput) {
     const cover = await persistImage(input.cover).catch(() => Promise.reject(new ServiceError('unavailable')));
-    return guard(() => apiRequest<Masterclass>(`/admin/masterclasses/${encodeURIComponent(id)}`, { method: 'PUT', json: { ...input, cover } }));
+    const res = await guard(() => apiRequest<Masterclass>(`/admin/masterclasses/${encodeURIComponent(id)}`, { method: 'PUT', json: { ...input, cover } }));
+    notifyMasterclassesChanged();
+    return res;
   },
-  setStatus: (id, status: MasterclassStatus) =>
-    guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}/status`, { method: 'PATCH', json: { status } })),
-  remove: (id) => guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}`, { method: 'DELETE' })),
+  setStatus: async (id, status: MasterclassStatus) => {
+    await guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}/status`, { method: 'PATCH', json: { status } }));
+    notifyMasterclassesChanged();
+  },
+  remove: async (id) => {
+    await guard(() => apiRequest<void>(`/admin/masterclasses/${encodeURIComponent(id)}`, { method: 'DELETE' }));
+    notifyMasterclassesChanged();
+  },
   listSpeakers: () => guard(() => apiRequest<Speaker[]>('/speakers')),
   async saveSpeaker(input) {
     const photo = await persistImage(input.photo).catch(() => Promise.reject(new ServiceError('unavailable')));

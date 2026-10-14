@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
@@ -22,6 +23,16 @@ export default function AdminDashboardPage() {
   const regs = useAsync(() => registrationService.listAll(), []);
   const results = useAsync(() => eligibilityService.listAllResults(), []);
 
+  useEffect(() => {
+    const handler = () => {
+      stats.reload();
+      classes.reload();
+      regs.reload();
+    };
+    window.addEventListener('fundly:masterclasses-updated', handler);
+    return () => window.removeEventListener('fundly:masterclasses-updated', handler);
+  }, [stats, classes, regs]);
+
   if (stats.loading || classes.loading || regs.loading || results.loading) return <LoadingBlock rows={4} />;
   if (stats.error || classes.error || regs.error || results.error || !stats.data) {
     return (
@@ -34,7 +45,7 @@ export default function AdminDashboardPage() {
   const s = stats.data;
   const byClass = (classes.data ?? [])
     .filter((m) => m.status !== 'draft')
-    .map((m) => ({ key: m.id, label: l(m.title), value: (regs.data ?? []).filter((r) => r.masterclassId === m.id).length }))
+    .map((m) => ({ key: m.id, label: l(m.title), value: (regs.data ?? []).filter((r) => r.masterclassId === m.id && r.status !== 'cancelled').length }))
     .filter((x) => x.value > 0)
     .sort((x, y) => y.value - x.value);
   const byBand = readinessBands.map((b) => ({
