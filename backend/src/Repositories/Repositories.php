@@ -644,7 +644,7 @@ final class PaymentSubmissionRepository
     /** @return array<string,mixed> */
     public static function getById(int $id): array
     {
-        $st = Db::pdo()->prepare('SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.full_name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users adm ON adm.id = ps.verified_by_admin_id WHERE ps.id = ?');
+        $st = Db::pdo()->prepare('SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN admin_users adm ON adm.id = ps.verified_by_admin_id WHERE ps.id = ?');
         $st->execute([$id]);
         $row = $st->fetch();
         if (!$row) {
@@ -657,7 +657,7 @@ final class PaymentSubmissionRepository
     public static function listSubmissions(?int $regId = null, ?int $userId = null, array $filters = []): array
     {
         $pdo = Db::pdo();
-        $sql = 'SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.full_name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users adm ON adm.id = ps.verified_by_admin_id WHERE 1=1';
+        $sql = 'SELECT ps.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount AS payable_amount, m.id AS mc_id, m.title_en AS masterclass_title, m.fee AS masterclass_fee, adm.name AS verified_by_name FROM payment_submissions ps JOIN registrations r ON r.id = ps.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN admin_users adm ON adm.id = ps.verified_by_admin_id WHERE 1=1';
         $params = [];
 
         if ($regId !== null) {
@@ -1020,7 +1020,7 @@ final class RefundRepository
     /** @return array<string,mixed> */
     public static function getById(int $id): array
     {
-        $st = Db::pdo()->prepare('SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.full_name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN users adm ON adm.id = rf.processed_by_admin_id WHERE rf.id = ?');
+        $st = Db::pdo()->prepare('SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN admin_users adm ON adm.id = rf.processed_by_admin_id WHERE rf.id = ?');
         $st->execute([$id]);
         $row = $st->fetch();
         if (!$row) {
@@ -1033,7 +1033,7 @@ final class RefundRepository
     public static function listAdmin(array $filters = []): array
     {
         $pdo = Db::pdo();
-        $sql = 'SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.full_name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN users adm ON adm.id = rf.processed_by_admin_id WHERE 1=1';
+        $sql = 'SELECT rf.*, r.code AS reg_code, r.name AS attendee_name, r.email AS attendee_email, r.business_name, r.amount_paid, r.amount_refunded, m.id AS mc_id, m.title_en AS masterclass_title, u.full_name AS requester_name, adm.name AS processed_by_name FROM refunds rf JOIN registrations r ON r.id = rf.registration_id JOIN masterclasses m ON m.id = r.masterclass_id LEFT JOIN users u ON u.id = rf.requested_by_user_id LEFT JOIN admin_users adm ON adm.id = rf.processed_by_admin_id WHERE 1=1';
         $params = [];
 
         if (!empty($filters['status'])) {
