@@ -16,7 +16,7 @@ export default function MyRegistrationsPage() {
   useDocumentTitle(d.myreg.title);
   const { user } = useAuth();
   const regs = useAsync(() => registrationService.listMine(user!.id), [user?.id]);
-  const classes = useAsync(() => masterclassService.listAll(), []);
+  const classes = useAsync(() => masterclassService.listPublic(), []);
 
   return (
     <div className="mx-auto max-w-4xl">
