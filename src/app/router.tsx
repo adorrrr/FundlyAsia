@@ -3,7 +3,8 @@ import { createBrowserRouter, Outlet, useRouteError } from 'react-router-dom';
 import PublicLayout from '@/layouts/PublicLayout';
 import { GuestOnly, RequireAdmin, RequireSme } from './guards';
 import { ScrollManager } from './ScrollManager';
-import { LoadingBlock, ErrorState } from '@/components/ui/Feedback';
+import { LoadingBlock, ErrorState, EmptyState } from '@/components/ui/Feedback';
+import { Button } from '@/components/ui/Button';
 
 const AuthLayout = lazy(() => import('@/layouts/AuthLayout'));
 const SMELayout = lazy(() => import('@/layouts/SMELayout'));
@@ -141,6 +142,18 @@ export const router = createBrowserRouter([
               { path: '/admin/eligibility/rules', element: s(<AdminRulesPage />) },
               { path: '/admin/eligibility/results', element: s(<AdminResultsPage />) },
               { path: '/admin/reports', element: s(<AdminReportsPage />) },
+              {
+                path: '/admin/*',
+                element: (
+                  <div className="py-16">
+                    <EmptyState
+                      title="Page not found"
+                      body="The admin page you requested does not exist."
+                      action={<Button to="/admin">Go to Admin Dashboard</Button>}
+                    />
+                  </div>
+                ),
+              },
             ],
           },
         ],

@@ -64,6 +64,8 @@ return static function (Router $r): void {
     $r->add('GET', '/admin/scoring-rules', [AdminController::class, 'scoringRules']);
     $r->add('PUT', '/admin/scoring-rules', [AdminController::class, 'updateScoringRules']);
     $r->add('GET', '/admin/questions', [AdminController::class, 'questions']);
+    $r->add('POST', '/admin/questions', [AdminController::class, 'saveQuestion']);
+    $r->add('PATCH', '/admin/questions/{id}/active', [AdminController::class, 'setQuestionActive']);
 
     $r->add('GET', '/admin/masterclasses', [MasterclassController::class, 'listAdmin']);
     $r->add('POST', '/admin/masterclasses', [MasterclassController::class, 'create']);

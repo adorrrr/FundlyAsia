@@ -57,11 +57,11 @@ export const apiRegistrationService: RegistrationService = {
 
   async setStatus(id: string, status: RegistrationStatus) {
     try {
-      await apiRequest<void>(`/admin/registrations/${encodeURIComponent(id)}/attendance`, {
+      const updated = await apiRequest<Registration>(`/admin/registrations/${encodeURIComponent(id)}/attendance`, {
         method: 'PATCH',
         json: { status },
       });
-      return await this.get(id);
+      return updated ?? await this.get(id);
     } catch {
       throw new ServiceError('unavailable');
     }
@@ -69,11 +69,11 @@ export const apiRegistrationService: RegistrationService = {
 
   async setPaymentStatus(id: string, status: PaymentStatus, reason?: string) {
     try {
-      await apiRequest<void>(`/admin/registrations/${encodeURIComponent(id)}/payment`, {
+      const updated = await apiRequest<Registration>(`/admin/registrations/${encodeURIComponent(id)}/payment`, {
         method: 'PATCH',
         json: { status, reason: reason || 'Admin manual update' },
       });
-      return await this.get(id);
+      return updated ?? await this.get(id);
     } catch {
       throw new ServiceError('unavailable');
     }

@@ -103,8 +103,14 @@ export const apiEligibilityService: EligibilityService = {
   },
 
   async setQuestionActive(id: string, active: boolean) {
-    void id;
-    void active;
+    try {
+      await apiRequest<void>(`/admin/questions/${encodeURIComponent(id)}/active`, {
+        method: 'PATCH',
+        json: { active },
+      });
+    } catch {
+      throw new ServiceError('unavailable');
+    }
   },
 
 

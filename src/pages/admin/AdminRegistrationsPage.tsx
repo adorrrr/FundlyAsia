@@ -12,7 +12,7 @@ import { SelectField, TextField } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
-import { EmptyState, LoadingBlock, Notice } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, LoadingBlock, Notice } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/utils/csv';
 import { isBlank } from '@/utils/validation';
@@ -125,20 +125,26 @@ export default function AdminRegistrationsPage() {
         <FilterPills label={a.payment} value={pay} onChange={setPay} options={[{ value: 'all', label: d.common.all }, ...PAYMENT.map((p) => ({ value: p, label: d.status[p] }))]} />
       </div>
 
-      <DataTable<Registration>
-        caption={a.title}
-        rows={rows}
-        rowKey={(r) => r.id}
-        empty={<EmptyState title={d.common.noResults} action={<Button variant="secondary" onClick={() => { setQ(''); setMc(''); setPay('all'); }}>{d.common.clearFilters}</Button>} />}
-        columns={[
-          { key: 'n', header: a.name, cell: (r) => <div><p className="font-semibold">{r.name}</p><p className="tnum text-meta text-slate">{r.id}</p></div> },
-          { key: 'b', header: d.admin.smes.business, cell: (r) => <div><p>{r.businessName}</p><p className="text-meta text-slate">{r.email}</p></div>, hideBelow: 'lg' },
-          { key: 'm', header: a.masterclass, cell: (r) => <div><p>{titleOf(r.masterclassId)}</p><p className="text-meta text-slate">{formatDate(r.createdAt)}</p></div>, hideBelow: 'md' },
-          { key: 'r', header: a.registration, cell: (r) => <StatusBadge status={r.status} /> },
-          { key: 'p', header: a.payment, cell: (r) => <StatusBadge status={r.paymentStatus} /> },
-          { key: 'x', header: <span className="sr-only">{d.common.actions}</span>, align: 'right', cell: (r) => <Button size="sm" variant="ghost" icon={<Settings2 className="h-3.5 w-3.5" />} onClick={() => setManaging(r)} aria-label={`${d.common.edit} ${r.id}`}>{d.common.edit}</Button> },
-        ]}
-      />
+      {regs.loading || classes.loading ? (
+        <LoadingBlock rows={5} />
+      ) : regs.error || classes.error ? (
+        <ErrorState onRetry={() => { regs.reload(); classes.reload(); }} />
+      ) : (
+        <DataTable<Registration>
+          caption={a.title}
+          rows={rows}
+          rowKey={(r) => r.id}
+          empty={<EmptyState title={d.common.noResults} action={<Button variant="secondary" onClick={() => { setQ(''); setMc(''); setPay('all'); }}>{d.common.clearFilters}</Button>} />}
+          columns={[
+            { key: 'n', header: a.name, cell: (r) => <div><p className="font-semibold">{r.name}</p><p className="tnum text-meta text-slate">{r.id}</p></div> },
+            { key: 'b', header: d.admin.smes.business, cell: (r) => <div><p>{r.businessName}</p><p className="text-meta text-slate">{r.email}</p></div>, hideBelow: 'lg' },
+            { key: 'm', header: a.masterclass, cell: (r) => <div><p>{titleOf(r.masterclassId)}</p><p className="text-meta text-slate">{formatDate(r.createdAt)}</p></div>, hideBelow: 'md' },
+            { key: 'r', header: a.registration, cell: (r) => <StatusBadge status={r.status} /> },
+            { key: 'p', header: a.payment, cell: (r) => <StatusBadge status={r.paymentStatus} /> },
+            { key: 'x', header: <span className="sr-only">{d.common.actions}</span>, align: 'right', cell: (r) => <Button size="sm" variant="ghost" icon={<Settings2 className="h-3.5 w-3.5" />} onClick={() => setManaging(r)} aria-label={`${d.common.edit} ${r.id}`}>{d.common.edit}</Button> },
+          ]}
+        />
+      )}
 
       <Dialog open={!!managing} onClose={() => setManaging(null)} title={managing?.id ?? ''} description={managing ? `${managing.name} · ${titleOf(managing.masterclassId)}` : undefined} size="md">
         {managing && (

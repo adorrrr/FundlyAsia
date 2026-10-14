@@ -1,5 +1,6 @@
 import type { Masterclass, MasterclassStatus, Speaker } from '@/types';
 import { ApiError, apiRequest } from './client';
+import { loadSession } from './authApi';
 import { ServiceError } from '../errors';
 import type { MasterclassInput, MasterclassService } from '../masterclassService';
 
@@ -37,7 +38,11 @@ export const apiMasterclassService: MasterclassService = {
     } catch (e) {
       if (!(e instanceof ServiceError) || e.code !== 'not_found') throw e;
       // Drafts are only visible to signed-in admins.
-      return guard(() => apiRequest<Masterclass>(`/admin/masterclasses/${encodeURIComponent(id)}`));
+      const current = loadSession();
+      if (current?.role === 'admin') {
+        return guard(() => apiRequest<Masterclass>(`/admin/masterclasses/${encodeURIComponent(id)}`));
+      }
+      throw e;
     }
   },
   async create(input: MasterclassInput) {

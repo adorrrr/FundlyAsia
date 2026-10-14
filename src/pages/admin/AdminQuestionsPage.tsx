@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Dialog } from '@/components/ui/Dialog';
 import { SelectField, Switch, TextField, TextareaField } from '@/components/ui/Field';
 import { FilterPills, SearchInput } from '@/components/ui/SearchInput';
-import { LoadingBlock, Notice, EmptyState } from '@/components/ui/Feedback';
+import { LoadingBlock, Notice, EmptyState, ErrorState } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { QuestionField } from '@/components/eligibility/QuestionField';
 import { isBlank } from '@/utils/validation';
@@ -29,7 +29,7 @@ export default function AdminQuestionsPage() {
   const a = d.admin.questions;
   useDocumentTitle(a.title);
   const toast = useToast();
-  const { data, loading, setData } = useAsync(() => eligibilityService.getQuestions({ includeInactive: true }), []);
+  const { data, loading, error, reload, setData } = useAsync(() => eligibilityService.getQuestions({ includeInactive: true }), []);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<'all' | QuestionCategory>('all');
   const [edit, setEdit] = useState<{ q: Question; isNew: boolean } | null>(null);
@@ -86,6 +86,14 @@ export default function AdminQuestionsPage() {
   const upd = (patch: Partial<Question>) => setEdit((s) => (s ? { ...s, q: { ...s.q, ...patch } } : s));
 
   if (loading) return <LoadingBlock rows={5} />;
+  if (error || !data) {
+    return (
+      <div>
+        <PageHeader title={a.title} body={a.body} />
+        <ErrorState onRetry={reload} />
+      </div>
+    );
+  }
 
   return (
     <div>

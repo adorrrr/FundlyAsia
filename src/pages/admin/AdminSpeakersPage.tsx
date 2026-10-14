@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { TextField, TextareaField } from '@/components/ui/Field';
 import { ImageUpload } from '@/components/ui/ImageUpload';
-import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
+import { EmptyState, ErrorState, LoadingBlock } from '@/components/ui/Feedback';
 import { useToast } from '@/components/ui/Toast';
 import { isBlank } from '@/utils/validation';
 
@@ -73,6 +73,8 @@ export default function AdminSpeakersPage() {
       <PageHeader back={{ to: '/admin/masterclasses', label: m.title }} title={a.title} body={a.body} actions={<Button icon={<Plus className="h-4 w-4" />} onClick={() => { setError(undefined); setDraft({ ...blank }); }}>{a.add}</Button>} />
       {speakers.loading ? (
         <LoadingBlock rows={3} />
+      ) : speakers.error || classes.error ? (
+        <ErrorState onRetry={() => { speakers.reload(); classes.reload(); }} />
       ) : !speakers.data?.length ? (
         <EmptyState title={a.empty} action={<Button onClick={() => setDraft({ ...blank })}>{a.add}</Button>} />
       ) : (

@@ -501,6 +501,61 @@ final class EligibilityRepository
         return array_map([self::class, 'mapQuestion'], $rows);
     }
 
+    /** @param array<string,mixed> $q @return array<string,mixed> */
+    public static function saveQuestion(array $q): array
+    {
+        $pdo = Db::pdo();
+        $id = (string) $q['id'];
+        $step = (int) ($q['step'] ?? 1);
+        $category = (string) ($q['category'] ?? 'business_information');
+        $answerType = (string) ($q['answerType'] ?? 'single_choice');
+        $textEn = (string) ($q['text']['en'] ?? '');
+        $textBn = (string) ($q['text']['bn'] ?? '');
+        $helpEn = isset($q['help']['en']) ? (string) $q['help']['en'] : null;
+        $helpBn = isset($q['help']['bn']) ? (string) $q['help']['bn'] : null;
+        $optionsJson = !empty($q['options']) ? json_encode($q['options']) : null;
+        $required = !empty($q['required']) ? 1 : 0;
+        $prefillFrom = !empty($q['prefillFrom']) ? (string) $q['prefillFrom'] : null;
+        $showWhenJson = !empty($q['showWhen']) ? json_encode($q['showWhen']) : null;
+        $weight = isset($q['weight']) && is_numeric($q['weight']) ? (float) $q['weight'] : null;
+        $ruleRef = !empty($q['ruleRef']) ? (string) $q['ruleRef'] : null;
+        $active = isset($q['active']) ? ($q['active'] ? 1 : 0) : 1;
+        $now = date('Y-m-d H:i:s');
+
+        $st = $pdo->prepare('
+            INSERT INTO questions (id, step, category, answer_type, text_en, text_bn, help_en, help_bn, options_json, required, prefill_from, show_when_json, weight, rule_ref, active, sort_order, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 10, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                step = VALUES(step),
+                category = VALUES(category),
+                answer_type = VALUES(answer_type),
+                text_en = VALUES(text_en),
+                text_bn = VALUES(text_bn),
+                help_en = VALUES(help_en),
+                help_bn = VALUES(help_bn),
+                options_json = VALUES(options_json),
+                required = VALUES(required),
+                prefill_from = VALUES(prefill_from),
+                show_when_json = VALUES(show_when_json),
+                weight = VALUES(weight),
+                rule_ref = VALUES(rule_ref),
+                active = VALUES(active),
+                updated_at = VALUES(updated_at)
+        ');
+        $st->execute([$id, $step, $category, $answerType, $textEn, $textBn, $helpEn, $helpBn, $optionsJson, $required, $prefillFrom, $showWhenJson, $weight, $ruleRef, $active, $now, $now]);
+
+        $st2 = $pdo->prepare('SELECT * FROM questions WHERE id = ?');
+        $st2->execute([$id]);
+        return self::mapQuestion($st2->fetch());
+    }
+
+    public static function setQuestionActive(string $id, bool $active): void
+    {
+        $pdo = Db::pdo();
+        $st = $pdo->prepare('UPDATE questions SET active = ?, updated_at = NOW() WHERE id = ?');
+        $st->execute([$active ? 1 : 0, $id]);
+    }
+
     /** @return array<string,mixed>|null */
     public static function getCurrentAssessment(int $userId): ?array
     {

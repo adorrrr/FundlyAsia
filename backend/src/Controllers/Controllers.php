@@ -353,6 +353,16 @@ final class RegistrationController
 
     public static function show(Request $req): void
     {
+        $admin = Auth::currentAdmin();
+        if ($admin) {
+            $reg = \Fundly\Repositories\RegistrationRepository::findById($req->params['id'], null);
+            if (!$reg) {
+                throw new HttpException(404, 'not_found', 'Registration not found.');
+            }
+            Response::json($reg);
+            return;
+        }
+
         $user = Auth::requireUser();
         $reg = \Fundly\Repositories\RegistrationRepository::findById($req->params['id'], (int) $user['id']);
         if (!$reg) {
@@ -484,7 +494,8 @@ final class AdminController
         $b = $req->json();
         $status = is_string($b['status'] ?? null) ? trim($b['status']) : 'unmarked';
         \Fundly\Repositories\AdminRepository::updateAttendance($id, $status);
-        Response::noContent();
+        $updated = \Fundly\Repositories\RegistrationRepository::findById($id, null);
+        Response::json($updated);
     }
 
     public static function correctPayment(Request $req): void
@@ -498,7 +509,8 @@ final class AdminController
             throw new HttpException(422, 'validation', 'Status and reason for correction are required.');
         }
         \Fundly\Repositories\AdminRepository::correctPayment($id, $status, $reason, (int) $admin['id'], $req->ip());
-        Response::noContent();
+        $updated = \Fundly\Repositories\RegistrationRepository::findById($id, null);
+        Response::json($updated);
     }
 
     public static function results(Request $req): void
@@ -528,6 +540,27 @@ final class AdminController
     {
         Auth::requireAdmin();
         Response::json(\Fundly\Repositories\EligibilityRepository::listQuestions(false));
+    }
+
+    public static function saveQuestion(Request $req): void
+    {
+        Auth::requireAdmin();
+        $q = $req->json();
+        if (empty($q['id']) || empty($q['text']['en']) || empty($q['text']['bn'])) {
+            throw new HttpException(422, 'validation', 'Question ID and text in both English and Bengali are required.');
+        }
+        $saved = \Fundly\Repositories\EligibilityRepository::saveQuestion($q);
+        Response::json($saved);
+    }
+
+    public static function setQuestionActive(Request $req): void
+    {
+        Auth::requireAdmin();
+        $id = (string) $req->params['id'];
+        $b = $req->json();
+        $active = !empty($b['active']);
+        \Fundly\Repositories\EligibilityRepository::setQuestionActive($id, $active);
+        Response::noContent();
     }
 }
 

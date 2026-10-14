@@ -5,7 +5,7 @@ import { adminService, eligibilityService, masterclassService, registrationServi
 import { PageHeader, SectionTitle } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { LoadingBlock } from '@/components/ui/Feedback';
+import { ErrorState, LoadingBlock } from '@/components/ui/Feedback';
 import { BarList, StatTile } from '@/components/admin/BarList';
 import { DataTable } from '@/components/ui/DataTable';
 import { readinessBands } from '@/data/scoring';
@@ -22,7 +22,15 @@ export default function AdminDashboardPage() {
   const regs = useAsync(() => registrationService.listAll(), []);
   const results = useAsync(() => eligibilityService.listAllResults(), []);
 
-  if (stats.loading || classes.loading || regs.loading || results.loading || !stats.data) return <LoadingBlock rows={4} />;
+  if (stats.loading || classes.loading || regs.loading || results.loading) return <LoadingBlock rows={4} />;
+  if (stats.error || classes.error || regs.error || results.error || !stats.data) {
+    return (
+      <div>
+        <PageHeader title={a.title} body={a.body} />
+        <ErrorState onRetry={() => { stats.reload(); classes.reload(); regs.reload(); results.reload(); }} />
+      </div>
+    );
+  }
   const s = stats.data;
   const byClass = (classes.data ?? [])
     .filter((m) => m.status !== 'draft')

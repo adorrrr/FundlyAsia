@@ -8,7 +8,7 @@ import { initialScoringAreas, readinessBands } from '@/data/scoring';
 import type { ScoringArea } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { LoadingBlock, Notice } from '@/components/ui/Feedback';
+import { ErrorState, LoadingBlock, Notice } from '@/components/ui/Feedback';
 import { BandBadge } from '@/components/ui/Readiness';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/cn';
@@ -18,7 +18,7 @@ export default function AdminRulesPage() {
   const a = d.admin.rules;
   useDocumentTitle(a.title);
   const toast = useToast();
-  const { data, loading } = useAsync(() => eligibilityService.getScoringAreas(), []);
+  const { data, loading, error, reload } = useAsync(() => eligibilityService.getScoringAreas(), []);
   const [areas, setAreas] = useState<ScoringArea[]>([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -45,6 +45,14 @@ export default function AdminRulesPage() {
   };
 
   if (loading) return <LoadingBlock rows={4} />;
+  if (error || !data) {
+    return (
+      <div className="max-w-4xl">
+        <PageHeader title={a.title} body={a.body} />
+        <ErrorState onRetry={reload} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl">

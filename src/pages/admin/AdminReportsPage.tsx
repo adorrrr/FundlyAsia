@@ -9,7 +9,7 @@ import { readinessBands } from '@/data/scoring';
 import { PageHeader, SectionTitle } from '@/components/ui/PageHeader';
 import { TextField } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
-import { LoadingBlock } from '@/components/ui/Feedback';
+import { ErrorState, LoadingBlock } from '@/components/ui/Feedback';
 import { BarList, StatTile } from '@/components/admin/BarList';
 import { useToast } from '@/components/ui/Toast';
 import { downloadCsv } from '@/utils/csv';
@@ -23,7 +23,7 @@ export default function AdminReportsPage() {
   useDocumentTitle(a.title);
   const toast = useToast();
   const [range, setRange] = useState<DateRange>({ from: '', to: '' });
-  const { data, loading } = useAsync(() => reportsService.get(range), [range.from, range.to]);
+  const { data, loading, error, reload } = useAsync(() => reportsService.get(range), [range.from, range.to]);
   const exported = () => toast(d.admin.regs.exported, 'info');
 
   return (
@@ -36,8 +36,10 @@ export default function AdminReportsPage() {
         {(range.from || range.to) && <Button variant="ghost" onClick={() => setRange({ from: '', to: '' })}>{d.common.clearFilters}</Button>}
       </fieldset>
 
-      {loading || !data ? (
+      {loading ? (
         <LoadingBlock rows={4} />
+      ) : error || !data ? (
+        <ErrorState onRetry={reload} />
       ) : (
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
