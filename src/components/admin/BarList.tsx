@@ -72,12 +72,22 @@ export function BarList({ data, caption, unit }: { data: BarDatum[]; caption: st
   );
 }
 
-export function StatTile({ label, value, note }: { label: string; value: string; note?: string }) {
+export function StatTile({
+  label,
+  value,
+  note,
+  className,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  className?: string;
+}) {
   return (
-    <div className="surface flex flex-col p-4 sm:p-5">
-      <p className="text-meta text-slate">{label}</p>
-      <p className="tnum mt-auto pt-3 text-[1.875rem] font-bold leading-none tracking-tight">{value}</p>
-      {note && <p className="mt-2 text-[0.75rem] text-slate">{note}</p>}
+    <div className={cn('surface flex flex-col p-2.5 sm:p-5', className)}>
+      <p className="text-[0.72rem] sm:text-meta text-slate font-medium leading-tight">{label}</p>
+      <p className="tnum mt-auto pt-1.5 sm:pt-3 text-[1.15rem] sm:text-[1.875rem] font-bold leading-tight tracking-tight text-ink">{value}</p>
+      {note && <p className="mt-1 sm:mt-2 text-[0.65rem] sm:text-[0.75rem] text-slate leading-tight">{note}</p>}
     </div>
   );
 }

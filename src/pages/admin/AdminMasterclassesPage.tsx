@@ -131,7 +131,7 @@ export default function AdminMasterclassesPage() {
         }
       />
       {/* 4 Overview Stat Tiles: Session Total Enroll, Total Price, Total Refund, Current Total Amount */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
         <StatTile
           label={l({ en: 'Session Total Enroll', bn: 'সেশন মোট এনরোল' })}
           value={formatNumber(stats.totalEnroll)}
