@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback';
 import { MasterclassCover } from '@/components/masterclasses/MasterclassCover';
 import { AdminRosterModal } from '@/components/masterclasses/AdminRosterModal';
+import { StatTile } from '@/components/admin/BarList';
 import { useToast } from '@/components/ui/Toast';
 import { notifyMasterclassesChanged, onMasterclassesChanged } from '@/services/api/manualPaymentApi';
 
@@ -42,6 +43,40 @@ export default function AdminMasterclassesPage() {
     const query = q.toLowerCase();
     return (data ?? []).filter((m) => Boolean(m.archived) === showingArchived && (status === 'all' || m.status === status) && (!query || [m.title.en, m.title.bn, m.topic.en].some((s) => s.toLowerCase().includes(query))));
   }, [data, q, showingArchived, status]);
+
+  const stats = useMemo(() => {
+    const allRegs = regs.data ?? [];
+    const targetMcIds = new Set((rows ?? []).map((m) => m.id));
+    const targetRegs = allRegs.filter((r) => targetMcIds.has(r.masterclassId));
+
+    const totalEnroll = targetRegs.length;
+    const activeEnroll = targetRegs.filter((r) => r.status !== 'cancelled').length;
+
+    let totalPrice = 0;
+    let totalRefund = 0;
+    let refundCount = 0;
+
+    for (const r of targetRegs) {
+      const paid = Number(
+        r.amountPaid != null
+          ? r.amountPaid
+          : (r.paymentStatus === 'paid' || r.paymentStatus === 'refunded' || r.paymentStatus === 'partially_refunded' ? r.amount : 0)
+      );
+      totalPrice += paid;
+
+      const ref = Number(
+        r.amountRefunded != null && r.amountRefunded > 0
+          ? r.amountRefunded
+          : (r.paymentStatus === 'refunded' ? (r.amountPaid ?? r.amount) : 0)
+      );
+      totalRefund += ref;
+      if (r.paymentStatus === 'refunded' || r.paymentStatus === 'partially_refunded' || ref > 0) {
+        refundCount++;
+      }
+    }
+
+    return { totalEnroll, activeEnroll, totalPrice, totalRefund, refundCount };
+  }, [regs.data, rows]);
 
   const [rosterMc, setRosterMc] = useState<Masterclass | null>(null);
 
@@ -95,6 +130,37 @@ export default function AdminMasterclassesPage() {
           </>
         }
       />
+      {/* 3 Overview Stat Tiles: Session Total Enroll, Total Price, Total Refund */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile
+          label={l({ en: 'Session Total Enroll', bn: 'সেশন মোট এনরোল' })}
+          value={formatNumber(stats.totalEnroll)}
+          note={
+            stats.activeEnroll !== stats.totalEnroll
+              ? `${formatNumber(stats.activeEnroll)} ${l({ en: 'active enrollees', bn: 'সক্রিয় এনরোলমেন্ট' })}`
+              : `${formatNumber(stats.totalEnroll)} ${l({ en: 'total enrollees', bn: 'মোট নিবন্ধিত' })}`
+          }
+        />
+        <StatTile
+          label={l({ en: 'Total Price', bn: 'মোট প্রাইস' })}
+          value={formatMoney(stats.totalPrice)}
+          note={
+            stats.totalRefund > 0
+              ? `${l({ en: 'Net', bn: 'নেট সংগ্রহ' })}: ${formatMoney(Math.max(0, stats.totalPrice - stats.totalRefund))}`
+              : l({ en: 'Total collected', bn: 'মোট সংগৃহীত ফি' })
+          }
+        />
+        <StatTile
+          label={l({ en: 'Total Refund', bn: 'মোট রিফান্ড' })}
+          value={formatMoney(stats.totalRefund)}
+          note={
+            stats.refundCount > 0
+              ? `${formatNumber(stats.refundCount)} ${l({ en: 'refunded registrations', bn: 'টি রিফান্ড সম্পন্ন' })}`
+              : l({ en: 'No refunds issued', bn: 'কোনো রিফান্ড নেই' })
+          }
+        />
+      </div>
+
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <SearchInput value={q} onChange={setQ} placeholder={a.search} />
         <FilterPills label={d.common.status} value={status} onChange={setStatus} options={[{ value: 'all', label: d.common.all }, ...MC_STATUSES.map((s) => ({ value: s, label: d.status[s] }))]} />
