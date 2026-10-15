@@ -22,6 +22,7 @@ return static function (Router $r): void {
     // Auth (SME & Admin)
     $r->add('POST', '/auth/signup', [AuthController::class, 'signup']);
     $r->add('POST', '/auth/login', [AuthController::class, 'login']);
+    $r->add('POST', '/auth/google', [AuthController::class, 'google']);
     $r->add('GET', '/auth/me', [AuthController::class, 'me']);
     $r->add('POST', '/auth/logout', [AuthController::class, 'logout']);
     $r->add('POST', '/auth/verify-otp', [AuthController::class, 'verifyOtp']);

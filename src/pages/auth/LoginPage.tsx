@@ -50,7 +50,7 @@ export default function LoginPage() {
   return (
     <>
       <AuthHeader title={d.auth.loginTitle} body={d.auth.loginBody} />
-      <GoogleButton />
+      <GoogleButton next={next} />
       <OrDivider />
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         {errors.form && <Notice tone="warn">{errors.form}</Notice>}

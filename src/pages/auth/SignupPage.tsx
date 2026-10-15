@@ -69,7 +69,7 @@ export default function SignupPage() {
   return (
     <>
       <AuthHeader title={d.auth.signupTitle} body={d.auth.signupBody} />
-      <GoogleButton />
+      <GoogleButton next={next} />
       <OrDivider />
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         {errors.form && <Notice tone="warn">{errors.form}</Notice>}

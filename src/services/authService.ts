@@ -15,7 +15,7 @@ export interface AuthService {
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(token: string, password: string): Promise<void>;
   adminLogin(email: string, password: string): Promise<SessionUser>;
-  googleSignIn(): Promise<SessionUser>;
+  googleSignIn(credential?: string, accessToken?: string): Promise<SessionUser>;
   logout(): Promise<void>;
 }
 

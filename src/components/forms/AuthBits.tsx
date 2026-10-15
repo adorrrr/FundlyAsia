@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Notice } from '@/components/ui/Feedback';
 import { useI18n } from '@/i18n/I18nProvider';
-import { authService, ServiceError } from '@/services';
+import { useAuth } from '@/app/providers/AuthProvider';
+import { useToast } from '@/components/ui/Toast';
+import { authService } from '@/services';
 
 export function AuthHeader({ title, body }: { title: string; body?: ReactNode }) {
   return (
@@ -24,21 +27,120 @@ function GoogleMark() {
   );
 }
 
-/** Google sign-in entry point. */
-export function GoogleButton() {
-  const { d } = useI18n();
-  const [notice, setNotice] = useState(false);
+function loadGoogleGsi(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return resolve();
+    const w = window as unknown as { google?: { accounts?: unknown } };
+    if (w.google?.accounts) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById('google-gsi-script');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', (e) => reject(e));
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'google-gsi-script';
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = (e) => reject(e);
+    document.head.appendChild(s);
+  });
+}
+
+interface GoogleTokenResponse {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+}
+
+/** Google sign-in & signup entry point. */
+export function GoogleButton({ next }: { next?: string | null }) {
+  const { d, l } = useI18n();
+  const { refresh } = useAuth();
+  const nav = useNavigate();
+  const toast = useToast();
+  const [missingConfig, setMissingConfig] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
   const onClick = async () => {
+    if (!clientId) {
+      setMissingConfig(true);
+      return;
+    }
+
     setBusy(true);
     try {
-      await authService.googleSignIn();
-    } catch (e) {
-      if (e instanceof ServiceError && e.code === 'not_connected') setNotice(true);
-    } finally {
+      await loadGoogleGsi();
+      const w = window as unknown as {
+        google?: {
+          accounts?: {
+            oauth2?: {
+              initTokenClient: (config: {
+                client_id: string;
+                scope: string;
+                callback: (resp: GoogleTokenResponse) => void | Promise<void>;
+              }) => {
+                requestAccessToken: (opts?: { prompt?: string }) => void;
+              };
+            };
+          };
+        };
+      };
+
+      if (!w.google?.accounts?.oauth2) {
+        throw new Error('Google Identity Services SDK could not be initialized.');
+      }
+
+      const client = w.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'openid email profile',
+        callback: async (resp: GoogleTokenResponse) => {
+          if (resp.error) {
+            setBusy(false);
+            if (resp.error !== 'popup_closed_by_user') {
+              toast(resp.error_description || resp.error, 'error');
+            }
+            return;
+          }
+          if (!resp.access_token) {
+            setBusy(false);
+            toast('Failed to receive Google access token.', 'error');
+            return;
+          }
+
+          try {
+            await authService.googleSignIn(undefined, resp.access_token);
+            const u = refresh();
+            if (!u?.hasBusinessProfile) {
+              nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+            } else {
+              nav(next && next.startsWith('/') ? next : '/dashboard');
+            }
+            toast(l({ en: 'Successfully signed in with Google!', bn: 'Google দিয়ে সফলভাবে সাইন-ইন হয়েছে!' }));
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+            toast(msg, 'error');
+          } finally {
+            setBusy(false);
+          }
+        },
+      });
+
+      client.requestAccessToken({ prompt: 'select_account' });
+    } catch (err: unknown) {
       setBusy(false);
+      const msg = err instanceof Error ? err.message : 'Unable to connect to Google.';
+      toast(msg, 'error');
     }
   };
+
   return (
     <div className="flex flex-col gap-3">
       <button
@@ -48,9 +150,26 @@ export function GoogleButton() {
         className="flex h-11 w-full items-center justify-center gap-2.5 rounded-control bg-surface text-body font-semibold text-ink shadow-hair transition-shadow hover:shadow-lift disabled:opacity-60"
       >
         <GoogleMark />
-        {d.auth.google}
+        {busy ? l({ en: 'Connecting to Google...', bn: 'Google-এ সংযোগ হচ্ছে...' }) : d.auth.google}
       </button>
-      {notice && <Notice tone="info">{d.auth.googleNotice}</Notice>}
+      {missingConfig && (
+        <Notice tone="info">
+          <div className="flex flex-col gap-1 text-xs sm:text-sm">
+            <span className="font-bold">
+              {l({
+                en: 'Google Client ID Required',
+                bn: 'Google ক্লায়েন্ট আইডি প্রয়োজন',
+              })}
+            </span>
+            <span>
+              {l({
+                en: 'Please add VITE_GOOGLE_CLIENT_ID in your .env file and GOOGLE_CLIENT_ID in backend/.env.',
+                bn: 'অনুগ্রহ করে .env ফাইলে VITE_GOOGLE_CLIENT_ID এবং backend/.env ফাইলে GOOGLE_CLIENT_ID দিন।',
+              })}
+            </span>
+          </div>
+        </Notice>
+      )}
     </div>
   );
 }

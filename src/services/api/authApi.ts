@@ -252,8 +252,22 @@ export const apiAuthService: AuthService = {
     }
   },
 
-  async googleSignIn() {
-    throw new ServiceError('unavailable');
+  async googleSignIn(credential?: string, accessToken?: string) {
+    try {
+      const user = await apiRequest<SessionUser>('/auth/google', {
+        method: 'POST',
+        json: { credential, accessToken },
+      });
+      saveSession(user);
+      return user;
+    } catch (e) {
+      if (e instanceof ApiError) {
+        if (e.status === 409) throw new ServiceError('email_taken', e.message);
+        if (e.status === 401 || e.status === 403) throw new ServiceError('invalid_credentials', e.message);
+        if (e.status === 422) throw new ServiceError('validation', e.message);
+      }
+      throw new ServiceError('unavailable', e instanceof Error ? e.message : undefined);
+    }
   },
 
   async logout() {

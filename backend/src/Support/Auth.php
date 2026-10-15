@@ -226,6 +226,66 @@ final class Auth
         ];
     }
 
+    /** SME login or signup via Google */
+    public static function loginOrSignupWithGoogle(string $email, string $fullName, ?string $googleSub, string $ip): array
+    {
+        $pdo = Db::pdo();
+        $normEmail = strtolower(trim($email));
+
+        // Check if SME user already exists
+        $st = $pdo->prepare('SELECT id, full_name, email, email_verified_at, status FROM users WHERE LOWER(TRIM(email)) = ?');
+        $st->execute([$normEmail]);
+        $user = $st->fetch();
+
+        $now = Db::now();
+
+        if ($user) {
+            if ($user['status'] !== 'active') {
+                throw new HttpException(403, 'account_disabled', 'This account has been disabled.');
+            }
+            if ($user['email_verified_at'] === null) {
+                $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?')->execute([$now, $now, (int) $user['id']]);
+                $user['email_verified_at'] = $now;
+            }
+            $userId = (int) $user['id'];
+            $name = $user['full_name'];
+            $email = $user['email'];
+        } else {
+            // Check if this email is an admin user
+            $admSt = $pdo->prepare('SELECT id FROM admin_users WHERE LOWER(TRIM(email)) = ?');
+            $admSt->execute([$normEmail]);
+            if ($admSt->fetchColumn()) {
+                throw new HttpException(409, 'admin_account', 'This email belongs to an administrator. Please log in via Admin portal.');
+            }
+
+            // Create new SME user
+            $randomPass = bin2hex(random_bytes(16));
+            $hash = password_hash($randomPass, PASSWORD_DEFAULT);
+
+            $insertSt = $pdo->prepare('INSERT INTO users (full_name, email, password_hash, email_verified_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $insertSt->execute([$fullName !== '' ? $fullName : 'Google User', $normEmail, $hash, $now, 'active', $now, $now]);
+            $userId = (int) $pdo->lastInsertId();
+            $name = $fullName !== '' ? $fullName : 'Google User';
+            $email = $normEmail;
+        }
+
+        self::startSession();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+        $_SESSION['user_id'] = $userId;
+        unset($_SESSION['admin_id']);
+
+        return [
+            'id' => (string) $userId,
+            'name' => $name,
+            'email' => $email,
+            'role' => 'sme',
+            'emailVerified' => true,
+            'hasBusinessProfile' => self::hasBusinessProfile($userId),
+        ];
+    }
+
     /** Purges expired OTP codes and their metadata from otp_codes (after 5 minutes) */
     public static function purgeExpiredOtps(): void
     {

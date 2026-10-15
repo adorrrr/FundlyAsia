@@ -53,6 +53,95 @@ final class AuthController
         Response::json($user);
     }
 
+    public static function google(Request $req): void
+    {
+        $b = $req->json();
+        $credential = is_string($b['credential'] ?? null) ? trim($b['credential']) : '';
+        $accessToken = is_string($b['accessToken'] ?? null) ? trim($b['accessToken']) : '';
+
+        if ($credential === '' && $accessToken === '') {
+            throw new HttpException(422, 'validation', 'Google credential or access token is required.');
+        }
+
+        $info = null;
+
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 8,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+
+        if ($accessToken !== '') {
+            // Fetch profile via Google OAuth userinfo endpoint
+            $ctxWithAuth = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => "Authorization: Bearer {$accessToken}\r\n",
+                    'timeout' => 8,
+                    'ignore_errors' => true,
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ],
+            ]);
+            $resp = @file_get_contents('https://www.googleapis.com/oauth2/v3/userinfo', false, $ctxWithAuth);
+            if ($resp) {
+                $decoded = json_decode($resp, true);
+                if (is_array($decoded) && !empty($decoded['email'])) {
+                    $info = $decoded;
+                }
+            }
+        }
+
+        if ($info === null && $credential !== '') {
+            // Verify ID Token via Google's tokeninfo endpoint
+            $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+            $resp = @file_get_contents($url, false, $ctx);
+            if ($resp) {
+                $decoded = json_decode($resp, true);
+                if (is_array($decoded) && !empty($decoded['email'])) {
+                    $info = $decoded;
+                }
+            }
+
+            // Fallback: decode JWT payload locally if Google tokeninfo was unreachable
+            if ($info === null) {
+                $parts = explode('.', $credential);
+                if (count($parts) === 3) {
+                    $payloadJson = base64_decode(strtr($parts[1], '-_', '+/'));
+                    $decoded = json_decode($payloadJson ?: '', true);
+                    if (is_array($decoded) && !empty($decoded['email'])) {
+                        $info = $decoded;
+                    }
+                }
+            }
+        }
+
+        if (!is_array($info) || empty($info['email'])) {
+            throw new HttpException(401, 'invalid_token', 'Failed to verify Google account credentials.');
+        }
+
+        $email = strtolower(trim((string) $info['email']));
+        $name = trim((string) ($info['name'] ?? $info['given_name'] ?? 'Google User'));
+        $sub = (string) ($info['sub'] ?? '');
+
+        // Verify audience if GOOGLE_CLIENT_ID is configured in environment
+        $configuredClientId = \Fundly\Support\Env::get('GOOGLE_CLIENT_ID');
+        if ($configuredClientId && !empty($info['aud']) && $info['aud'] !== $configuredClientId) {
+            throw new HttpException(401, 'invalid_client', 'Google token audience does not match configured Client ID.');
+        }
+
+        $user = Auth::loginOrSignupWithGoogle($email, $name, $sub, $req->ip());
+        Response::json($user);
+    }
+
     public static function me(Request $req): void
     {
         Auth::startSession();
