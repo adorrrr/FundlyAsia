@@ -80,6 +80,7 @@ export const router = createBrowserRouter([
           { path: '/', element: s(<HomePage />) },
           { path: '/masterclasses', element: s(<MasterclassesPage />) },
           { path: '/masterclasses/:id', element: s(<MasterclassDetailPage />) },
+          { path: '/404', element: s(<NotFoundPage />) },
         ],
       },
       {

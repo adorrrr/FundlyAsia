@@ -61,22 +61,26 @@ export default function NotFoundPage() {
       {/* ================= Massive Watermark "404" Layered Directly Underneath & Overlapping ================= */}
       <motion.div
         aria-hidden="true"
-        initial={reduceMotion ? false : { opacity: 0, y: 30 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 24 }}
         animate={
           reduceMotion
             ? { opacity: 1, y: 0 }
             : {
                 opacity: 1,
                 y: [0, -10, 0],
-                transition: {
-                  opacity: { duration: 0.8, ease: 'easeOut' },
-                  y: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
-                },
+              }
+        }
+        transition={
+          reduceMotion
+            ? { duration: 0.4 }
+            : {
+                opacity: { duration: 0.6, ease: 'easeOut' },
+                y: { duration: 5, repeat: Infinity, ease: 'easeInOut' },
               }
         }
         className="pointer-events-none relative -mt-8 sm:-mt-14 lg:-mt-20 z-0 select-none text-center leading-none w-full"
       >
-        <div className="text-[clamp(14rem,36vw,32rem)] font-bold tracking-[-0.04em] text-[#edf1f4] dark:text-white/[0.04] transition-colors select-none leading-none">
+        <div className="text-[clamp(14rem,36vw,32rem)] font-extrabold tracking-[-0.04em] text-slate-900/[0.08] dark:text-white/[0.08] select-none leading-none">
           404
         </div>
       </motion.div>
