@@ -117,8 +117,8 @@ export function GoogleButton({ next }: { next?: string | null }) {
             const user = await authService.googleSignIn(undefined, resp.access_token);
             refresh();
             const target = !user?.hasBusinessProfile
-              ? `/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`
-              : (next && next.startsWith('/') ? next : '/dashboard');
+              ? '/onboarding/business-profile'
+              : (next && next.startsWith('/') && !next.startsWith('/onboarding') ? next : '/dashboard');
             window.location.replace(target);
           } catch (err: unknown) {
             setBusy(false);

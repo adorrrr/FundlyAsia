@@ -131,6 +131,7 @@ final class Auth
         }
         $_SESSION['admin_id'] = (int) $admin['id'];
         unset($_SESSION['user_id']);
+        session_write_close();
         unset($admin['password_hash']);
         return $admin;
     }
@@ -163,6 +164,7 @@ final class Auth
         }
         $_SESSION['user_id'] = (int) $user['id'];
         unset($_SESSION['admin_id']);
+        session_write_close();
 
         if ($user['email_verified_at'] === null) {
             $now = Db::now();
@@ -215,6 +217,7 @@ final class Auth
         }
         $_SESSION['user_id'] = $userId;
         unset($_SESSION['admin_id']);
+        session_write_close();
 
         return [
             'id' => (string) $userId,
@@ -275,6 +278,7 @@ final class Auth
         }
         $_SESSION['user_id'] = $userId;
         unset($_SESSION['admin_id']);
+        session_write_close();
 
         return [
             'id' => (string) $userId,

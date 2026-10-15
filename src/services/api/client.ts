@@ -47,7 +47,7 @@ export async function apiRequest<T>(path: string, init: RequestInit & { json?: u
     } catch {
       /* non-JSON error */
     }
-    if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/admin/login') && !path.startsWith('/auth/google')) {
+    if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/admin/login') && !path.startsWith('/auth/google') && !path.startsWith('/auth/me')) {
       onUnauthorizedHandler?.();
     }
     throw new ApiError(res.status, message, code, errors);
