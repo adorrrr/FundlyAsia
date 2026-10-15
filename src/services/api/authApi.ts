@@ -152,7 +152,7 @@ export const apiAuthService: AuthService = {
         method: 'POST',
         json: input,
       });
-      // Do not saveSession yet; user must verify OTP before account is created & authenticated
+      saveSession(user);
       return user;
     } catch (e) {
       if (e instanceof ApiError) {

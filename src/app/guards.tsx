@@ -8,7 +8,6 @@ export function RequireSme({ allowNoProfile = false }: { allowNoProfile?: boolea
   const next = encodeURIComponent(loc.pathname + loc.search);
   if (!user) return <Navigate to={`/login?next=${next}`} replace />;
   if (user.role === 'admin') return <Navigate to="/admin" replace />;
-  if (!user.emailVerified) return <Navigate to="/verify-email" replace />;
   if (!user.hasBusinessProfile && !allowNoProfile) return <Navigate to={`/onboarding/business-profile?next=${next}`} replace />;
   return <Outlet />;
 }
@@ -22,6 +21,6 @@ export function RequireAdmin() {
 /** Logged-in SMEs skip the login/sign-up screens. */
 export function GuestOnly() {
   const { user } = useAuth();
-  if (user?.role === 'sme' && user.emailVerified) return <Navigate to="/dashboard" replace />;
+  if (user?.role === 'sme') return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }

@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthValue | null>(null);
  * sessionStorage; the live app will read an httpOnly session from the server.
  * Route guards here only shape navigation - they are not security.
  */
-const isVerifiedUser = (u: SessionUser | null): u is SessionUser => Boolean(u && (u.role === 'admin' || u.emailVerified));
+const isVerifiedUser = (u: SessionUser | null): u is SessionUser => Boolean(u && (u.role === 'admin' || u.role === 'sme'));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(() => {

@@ -164,21 +164,26 @@ final class Auth
         $_SESSION['user_id'] = (int) $user['id'];
         unset($_SESSION['admin_id']);
 
+        if ($user['email_verified_at'] === null) {
+            $now = Db::now();
+            $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?')->execute([$now, $now, (int) $user['id']]);
+            $user['email_verified_at'] = $now;
+        }
+
         return [
             'id' => (string) $user['id'],
             'name' => $user['full_name'],
             'email' => $user['email'],
             'role' => 'sme',
-            'emailVerified' => $user['email_verified_at'] !== null,
+            'emailVerified' => true,
             'hasBusinessProfile' => self::hasBusinessProfile((int) $user['id']),
         ];
     }
 
-    /** SME signup - Does NOT save in users table until OTP is verified */
+    /** SME signup - Directly creates user in users table and starts authenticated session (no OTP required) */
     public static function signupUser(string $fullName, string $email, string $password, string $ip): array
     {
         $pdo = Db::pdo();
-        self::purgeExpiredOtps();
         self::checkThrottle($email, $ip);
 
         $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
@@ -187,22 +192,28 @@ final class Auth
             throw new HttpException(409, 'email_taken', 'An account with this email already exists.');
         }
 
+        $now = Db::now();
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $metadata = json_encode([
-            'name' => $fullName,
-            'password_hash' => $hash,
-            'ip' => $ip,
-        ]);
 
-        // Generate OTP and store registration data in otp_codes.metadata without touching users table
-        self::generateOtp($email, 'signup', $metadata);
+        $pdo->prepare('INSERT INTO users (full_name, email, password_hash, email_verified_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$fullName, $email, $hash, $now, 'active', $now, $now]);
+        $userId = (int) $pdo->lastInsertId();
+
+        $pdo->prepare('DELETE FROM login_attempts WHERE email = ? OR ip = ?')->execute([$email, $ip]);
+
+        self::startSession();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+        $_SESSION['user_id'] = $userId;
+        unset($_SESSION['admin_id']);
 
         return [
-            'id' => '',
+            'id' => (string) $userId,
             'name' => $fullName,
             'email' => $email,
             'role' => 'sme',
-            'emailVerified' => false,
+            'emailVerified' => true,
             'hasBusinessProfile' => false,
         ];
     }
@@ -243,67 +254,24 @@ final class Auth
         return $code;
     }
 
-    /** Verifies a 6-digit OTP, throttled with 19-minute ban on 5 failures, and activates account */
+    /** Verifies a 6-digit OTP (kept for backwards compatibility; auto-verifies and activates user) */
     public static function verifyOtp(string $email, string $code, string $purpose = 'signup', string $ip = ''): bool
     {
         $pdo = Db::pdo();
         $now = Db::now();
 
-        self::purgeExpiredOtps();
-        self::checkThrottle($email, $ip);
-
-        // In non-production environments, 123456 is accepted as demo OTP
-        $isLocalDemo = Env::get('APP_ENV') !== 'production' && $code === '123456';
-
-        $st = $pdo->prepare('SELECT id, otp_hash, metadata, attempts, expires_at FROM otp_codes WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1');
-        $st->execute([$email, $purpose]);
-        $row = $st->fetch();
-
-        if (!$row || $row['expires_at'] < $now) {
-            if ($row) {
-                $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
-            }
-            throw new HttpException(400, 'otp_expired', 'Verification time has expired (5-minute limit). Please create your account again.');
-        }
-
-        $ok = password_verify($code, $row['otp_hash']) || $isLocalDemo;
-
-        if (!$ok) {
-            self::recordOtpFailureAndThrow($email, $ip, $row);
-        }
-
-        // Clean up OTP code after successful use
-        $pdo->prepare('DELETE FROM otp_codes WHERE id = ?')->execute([$row['id']]);
-        $pdo->prepare('DELETE FROM login_attempts WHERE email = ? OR ip = ?')->execute([$email, $ip]);
-
-        // If purpose is signup, create user if not existing, mark verified, and log in
-        if ($purpose === 'signup') {
-            $userSt = $pdo->prepare('SELECT id, full_name, email FROM users WHERE email = ?');
-            $userSt->execute([$email]);
-            $user = $userSt->fetch();
-
-            if (!$user) {
-                $meta = !empty($row['metadata']) ? json_decode($row['metadata'], true) : [];
-                $fullName = !empty($meta['name']) ? $meta['name'] : 'User';
-                $passwordHash = !empty($meta['password_hash']) ? $meta['password_hash'] : password_hash('Secret123!', PASSWORD_DEFAULT);
-
-                $pdo->prepare('INSERT INTO users (full_name, email, password_hash, email_verified_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-                    ->execute([$fullName, $email, $passwordHash, $now, 'active', $now, $now]);
-                $userId = (int) $pdo->lastInsertId();
-            } else {
-                $userId = (int) $user['id'];
-                $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?')->execute([$now, $now, $userId]);
-            }
-
+        // Mark user email as verified if they exist and start session
+        $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+        $st->execute([$email]);
+        $userId = $st->fetchColumn();
+        if ($userId) {
+            $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?')->execute([$now, $now, (int) $userId]);
             self::startSession();
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_regenerate_id(true);
             }
-            $_SESSION['user_id'] = $userId;
+            $_SESSION['user_id'] = (int) $userId;
             unset($_SESSION['admin_id']);
-        } else {
-            // Mark user email as verified if they exist
-            $pdo->prepare('UPDATE users SET email_verified_at = ?, updated_at = ? WHERE email = ?')->execute([$now, $now, $email]);
         }
 
         return true;

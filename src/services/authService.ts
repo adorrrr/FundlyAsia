@@ -71,7 +71,7 @@ export const mockAuthService: AuthService = {
     await delay(700);
     const existing = db.get().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     const id = existing?.id ?? uid('u');
-    if (!existing) db.update((st) => st.users.push({ id, name, email, emailVerified: false }));
+    if (!existing) db.update((st) => st.users.push({ id, name, email, emailVerified: true }));
     const s: StoredSession = { userId: id, role: 'sme' };
     writeSession(s);
     return toSessionUser(s)!;

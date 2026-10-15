@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useI18n } from '@/i18n/I18nProvider';
+import { useAuth } from '@/app/providers/AuthProvider';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { authService, ServiceError } from '@/services';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,7 @@ type Errors = Partial<Record<'name' | 'email' | 'password' | 'confirm' | 'form',
 export default function SignupPage() {
   const { d } = useI18n();
   useDocumentTitle(d.auth.signupTitle);
+  const { refresh } = useAuth();
   const nav = useNavigate();
   const toast = useToast();
   const [params] = useSearchParams();
@@ -44,7 +46,12 @@ export default function SignupPage() {
     setBusy(true);
     try {
       await authService.signup({ name: form.name.trim(), email: form.email.trim(), password: form.password });
-      nav(`/verify-email?email=${encodeURIComponent(form.email.trim())}${next ? `&next=${encodeURIComponent(next)}` : ''}`);
+      const u = refresh();
+      if (!u?.hasBusinessProfile) {
+        nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+      } else {
+        nav(next && next.startsWith('/') ? next : '/dashboard');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create account.';
       if (err instanceof ServiceError && err.code === 'email_taken') {

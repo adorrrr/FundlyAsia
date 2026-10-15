@@ -36,8 +36,7 @@ export default function LoginPage() {
     try {
       await authService.login(email, password);
       const u = refresh();
-      if (!u?.emailVerified) nav('/verify-email');
-      else if (!u.hasBusinessProfile) nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+      if (!u?.hasBusinessProfile) nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
       else nav(next && next.startsWith('/') ? next : '/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : d.auth.invalidCreds;
