@@ -103,7 +103,7 @@ echo "=== 4. SME Business Profile Flow ===\n";
 check('get initial business profile -> null/200', $c === 200, "code: $c");
 
 $bpInput = [
-    'businessName' => 'Jahan Fabrics Ltd',
+    'businessName' => 'Test Temp Enterprise',
     'businessType' => 'private_limited',
     'industry' => 'apparel',
     'location' => 'dhaka',
@@ -113,7 +113,7 @@ $bpInput = [
     'email' => $smeEmail,
 ];
 [$c, $savedProf] = call('POST', "$base/business-profile", $bpInput, $smeJar);
-check('save business profile -> 200', $c === 200 && ($savedProf['businessName'] ?? '') === 'Jahan Fabrics Ltd', "code: $c");
+check('save business profile -> 200', $c === 200 && ($savedProf['businessName'] ?? '') === 'Test Temp Enterprise', "code: $c");
 
 [$c, $smeMeUpdated] = call('GET', "$base/auth/me", null, $smeJar);
 check('sme me hasBusinessProfile -> true', $c === 200 && ($smeMeUpdated['hasBusinessProfile'] ?? false) === true, "code: $c");
@@ -211,8 +211,40 @@ check('admin list results -> 200', $c === 200 && count($adminResults) >= 1, "cod
 [$c, $rules] = call('GET', "$base/admin/scoring-rules", null, $adminJar);
 check('admin list scoring rules -> 200', $c === 200 && count($rules) === 6, "code: $c");
 
-// Clean up test masterclass
-call('DELETE', "$base/admin/masterclasses/$mcId", null, $adminJar);
+// Clean up all test artifacts created during this test
+try {
+    require_once __DIR__ . '/../src/Support/Env.php';
+    require_once __DIR__ . '/../src/Support/Db.php';
+    \Fundly\Support\Env::load(__DIR__ . '/../.env');
+    $testDb = \Fundly\Support\Db::pdo();
+
+    $targetUserId = (int)($u['id'] ?? 0);
+    $targetMcId = (int)($mcId ?? 0);
+
+    if ($targetUserId > 0 || $targetMcId > 0) {
+        $st = $testDb->prepare('SELECT id FROM registrations WHERE user_id = ? OR masterclass_id = ?');
+        $st->execute([$targetUserId, $targetMcId]);
+        $rids = $st->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($rids as $rid) {
+            $testDb->prepare('DELETE FROM refunds WHERE registration_id = ?')->execute([$rid]);
+            $testDb->prepare('DELETE FROM payment_submissions WHERE registration_id = ?')->execute([$rid]);
+            $testDb->prepare('DELETE FROM payments WHERE registration_id = ?')->execute([$rid]);
+            $testDb->prepare('DELETE FROM tickets WHERE registration_id = ?')->execute([$rid]);
+            $testDb->prepare('DELETE FROM registrations WHERE id = ?')->execute([$rid]);
+        }
+    }
+    if ($targetUserId > 0) {
+        $testDb->prepare('DELETE FROM assessment_results WHERE user_id = ?')->execute([$targetUserId]);
+        $testDb->prepare('DELETE FROM assessments WHERE user_id = ?')->execute([$targetUserId]);
+        $testDb->prepare('DELETE FROM business_profiles WHERE user_id = ?')->execute([$targetUserId]);
+        $testDb->prepare('DELETE FROM users WHERE id = ?')->execute([$targetUserId]);
+    }
+    if ($targetMcId > 0) {
+        $testDb->prepare('DELETE FROM masterclasses WHERE id = ?')->execute([$targetMcId]);
+    }
+} catch (\Throwable $e) {
+    // Ignore cleanup error
+}
 
 echo $fails ? "\n>>> $fails CHECKS FAILED <<<\n" : "\n>>> ALL 27 EXTENDED CHECKS PASSED <<<\n";
 exit($fails ? 1 : 0);
