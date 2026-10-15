@@ -16,10 +16,10 @@ export default function NotFoundPage() {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-16 sm:py-20 lg:py-24 text-center">
-      {/* ================= Centered Content Header ================= */}
+    <div className="relative flex flex-1 flex-col items-center justify-start overflow-hidden px-4 pt-16 sm:pt-24 lg:pt-28 pb-6 text-center min-h-[calc(100vh-140px)]">
+      {/* ================= Centered Content Header (Foreground, z-10) ================= */}
       <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+        initial={reduceMotion ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 flex max-w-xl flex-col items-center"
@@ -29,20 +29,20 @@ export default function NotFoundPage() {
           {l({ en: 'Page not found', bn: 'পাতাটি পাওয়া যায়নি' })}
         </h1>
 
-        {/* Subtitle / Explanation */}
-        <p className="mt-3.5 max-w-md text-base sm:text-lg text-slate leading-relaxed font-normal">
+        {/* Subtitle / Explanation (clean 2-line max-width) */}
+        <p className="mt-3.5 max-w-sm text-sm sm:text-base text-slate leading-relaxed font-normal">
           {l({
             en: "Oops! The page you're looking for may have been moved or no longer exists.",
             bn: 'উফ! আপনি যে পাতাটি খুঁজছেন তা সরানো হয়েছে অথবা আর বিদ্যমান নেই।',
           })}
         </p>
 
-        {/* Buttons Group (Signature glowing coral pill button) */}
+        {/* Buttons Group */}
         <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-center gap-3">
           {/* Glowing Coral Pill: Back to Home */}
           <Link
             to="/"
-            className="group relative inline-flex items-center justify-center rounded-full bg-[#ff5744] hover:bg-[#fa4935] px-7 py-3 text-sm sm:text-base font-semibold text-white shadow-[0_12px_28px_-6px_rgba(255,87,68,0.52)] hover:shadow-[0_16px_34px_-6px_rgba(255,87,68,0.65)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            className="group relative inline-flex items-center justify-center rounded-full bg-[#ff5238] hover:bg-[#fa4328] px-8 py-3 text-sm sm:text-base font-semibold text-white shadow-[0_12px_28px_-6px_rgba(255,82,56,0.52)] hover:shadow-[0_16px_34px_-6px_rgba(255,82,56,0.65)] transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
           >
             <span>{l({ en: 'Back to Home', bn: 'হোমে ফিরে যান' })}</span>
           </Link>
@@ -51,22 +51,32 @@ export default function NotFoundPage() {
           <button
             type="button"
             onClick={goBack}
-            className="inline-flex items-center justify-center rounded-full border border-line bg-surface/80 hover:bg-mist/50 px-6 py-3 text-sm sm:text-base font-semibold text-ink shadow-hair transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-sm"
+            className="inline-flex items-center justify-center rounded-full border border-line bg-surface/90 hover:bg-mist/60 px-6 py-3 text-sm sm:text-base font-medium text-ink shadow-hair transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-sm"
           >
             <span>{l({ en: 'Go Back', bn: 'পূর্বের পাতায়' })}</span>
           </button>
         </div>
       </motion.div>
 
-      {/* ================= Massive Watermark "404" Directly Below the Button ================= */}
+      {/* ================= Massive Watermark "404" Layered Directly Underneath & Overlapping ================= */}
       <motion.div
         aria-hidden="true"
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-        className="pointer-events-none relative -mt-4 sm:-mt-8 lg:-mt-10 select-none overflow-hidden text-center leading-none"
+        initial={reduceMotion ? false : { opacity: 0, y: 30 }}
+        animate={
+          reduceMotion
+            ? { opacity: 1, y: 0 }
+            : {
+                opacity: 1,
+                y: [0, -10, 0],
+                transition: {
+                  opacity: { duration: 0.8, ease: 'easeOut' },
+                  y: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+                },
+              }
+        }
+        className="pointer-events-none relative -mt-8 sm:-mt-14 lg:-mt-20 z-0 select-none text-center leading-none w-full"
       >
-        <div className="text-[clamp(13rem,32vw,28rem)] font-extrabold tracking-[-0.065em] text-[#edf2ef] transition-colors">
+        <div className="text-[clamp(14rem,36vw,32rem)] font-bold tracking-[-0.04em] text-[#edf1f4] dark:text-white/[0.04] transition-colors select-none leading-none">
           404
         </div>
       </motion.div>
