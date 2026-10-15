@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Notice } from '@/components/ui/Feedback';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -62,7 +61,6 @@ interface GoogleTokenResponse {
 export function GoogleButton({ next }: { next?: string | null }) {
   const { d, l } = useI18n();
   const { refresh } = useAuth();
-  const nav = useNavigate();
   const toast = useToast();
   const [missingConfig, setMissingConfig] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -116,19 +114,16 @@ export function GoogleButton({ next }: { next?: string | null }) {
           }
 
           try {
-            await authService.googleSignIn(undefined, resp.access_token);
-            const u = refresh();
-            if (!u?.hasBusinessProfile) {
-              nav(`/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`);
-            } else {
-              nav(next && next.startsWith('/') ? next : '/dashboard');
-            }
-            toast(l({ en: 'Successfully signed in with Google!', bn: 'Google দিয়ে সফলভাবে সাইন-ইন হয়েছে!' }));
+            const user = await authService.googleSignIn(undefined, resp.access_token);
+            refresh();
+            const target = !user?.hasBusinessProfile
+              ? `/onboarding/business-profile${next ? `?next=${encodeURIComponent(next)}` : ''}`
+              : (next && next.startsWith('/') ? next : '/dashboard');
+            window.location.replace(target);
           } catch (err: unknown) {
+            setBusy(false);
             const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
             toast(msg, 'error');
-          } finally {
-            setBusy(false);
           }
         },
       });

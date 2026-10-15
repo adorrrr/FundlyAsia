@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authService.syncSession().then((u) => {
         setUser(isVerifiedUser(u) ? u : null);
       }).catch(() => {
-        setUser(null);
+        // preserve local session on transient network error
       });
     }
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authService.syncSession().then((u) => {
           setUser(isVerifiedUser(u) ? u : null);
         }).catch(() => {
-          setUser(null);
+          // preserve local session on transient network error
         });
       }
     };
