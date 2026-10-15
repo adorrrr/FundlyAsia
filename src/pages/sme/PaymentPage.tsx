@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useParams, Link } from 'react-router-dom';
 import {
-  AlertCircle,
   Calendar,
   CheckCircle2,
   Clock,
@@ -280,41 +279,29 @@ export default function PaymentPage() {
                   </span>
                 </div>
 
-                {/* Instructions & Accounts */}
+                {/* Instructions */}
                 <div className="flex flex-col justify-center space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-brand-deep px-2 py-0.5 text-[0.6875rem] font-bold uppercase text-white">
                       Step 1
                     </span>
-                    <h3 className="text-body font-bold text-ink">Scan & Pay via Any App</h3>
+                    <h3 className="text-body font-bold text-ink">Scan & Pay via Bangla QR</h3>
                   </div>
 
                   <p className="text-meta leading-relaxed text-slate">
-                    Scan the QR above using <strong>bKash, Nagad, Upay, Cellfin</strong> or any
-                    Bangla QR compatible bank app, or transfer manually to our merchant numbers:
+                    Scan the QR code above using <strong>bKash, Nagad, Upay, Cellfin</strong>, or any
+                    Bangla QR compatible banking app to pay the registration fee of{' '}
+                    <strong className="text-ink">{formatMoney(current.amount)}</strong>.
                   </p>
 
-                  <div className="grid gap-2 text-meta sm:grid-cols-2">
-                    <div className="rounded-lg border border-line bg-surface p-2.5">
-                      <span className="text-[0.6875rem] font-semibold text-slate">
-                        bKash Merchant (Payment)
-                      </span>
-                      <p className="font-mono font-bold text-ink">01711-000000</p>
-                    </div>
-                    <div className="rounded-lg border border-line bg-surface p-2.5">
-                      <span className="text-[0.6875rem] font-semibold text-slate">
-                        Nagad Merchant (Payment)
-                      </span>
-                      <p className="font-mono font-bold text-ink">01811-000000</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 rounded-lg bg-mist/60 p-2.5 text-meta text-slate">
-                    <AlertCircle className="mt-0.5 h-4 w-4 flex-none text-brand-deep" />
-                    <span>
-                      Enter Reference: <strong>{current.id}</strong> when submitting payment in your
-                      app.
-                    </span>
+                  <div className="rounded-xl border border-line bg-surface p-3 text-meta text-slate">
+                    <p className="font-semibold text-ink">💡 How to pay:</p>
+                    <ol className="mt-1.5 list-inside list-decimal space-y-1 text-xs text-slate">
+                      <li>Open your mobile banking app (bKash / Nagad / Bank app).</li>
+                      <li>Select <strong>Scan QR</strong> and scan the Bangladesh QR code.</li>
+                      <li>Verify the payable amount and complete the transaction.</li>
+                      <li>Copy the Transaction ID (TrxID) and submit it below in Step 2.</li>
+                    </ol>
                   </div>
                 </div>
               </div>
