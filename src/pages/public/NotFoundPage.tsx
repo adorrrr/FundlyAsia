@@ -16,7 +16,33 @@ export default function NotFoundPage() {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-start overflow-hidden px-4 pt-10 sm:pt-16 lg:pt-20 pb-4 text-center min-h-[calc(100vh-160px)]">
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-16 sm:py-24 lg:py-28 text-center min-h-[calc(100vh-140px)]">
+      {/* ================= Giant 404 Watermark Centered in the Middle ================= */}
+      <motion.div
+        aria-hidden="true"
+        animate={
+          reduceMotion
+            ? undefined
+            : {
+                y: [0, -10, 0],
+              }
+        }
+        transition={
+          reduceMotion
+            ? undefined
+            : {
+                duration: 6,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }
+        }
+        className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none overflow-hidden"
+      >
+        <span className="text-[clamp(15rem,38vw,34rem)] font-extrabold tracking-tighter text-slate-400/[0.18] dark:text-white/[0.06] select-none leading-none">
+          404
+        </span>
+      </motion.div>
+
       {/* ================= Centered Content Header (Foreground, z-10) ================= */}
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 16 }}
@@ -56,32 +82,6 @@ export default function NotFoundPage() {
             <span>{l({ en: 'Go Back', bn: 'পূর্বের পাতায়' })}</span>
           </button>
         </div>
-      </motion.div>
-
-      {/* ================= Massive Watermark "404" Layered Directly Underneath & Overlapping ================= */}
-      <motion.div
-        aria-hidden="true"
-        animate={
-          reduceMotion
-            ? undefined
-            : {
-                y: [0, -8, 0],
-              }
-        }
-        transition={
-          reduceMotion
-            ? undefined
-            : {
-                duration: 5,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }
-        }
-        className="pointer-events-none relative -mt-6 sm:-mt-10 lg:-mt-14 z-0 select-none text-center leading-none w-full"
-      >
-        <span className="inline-block text-[clamp(9rem,24vw,20rem)] font-bold tracking-tight text-slate-300 dark:text-slate-700 select-none leading-none opacity-90">
-          404
-        </span>
       </motion.div>
     </div>
   );
