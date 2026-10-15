@@ -16,7 +16,7 @@ export default function NotFoundPage() {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-start overflow-hidden px-4 pt-16 sm:pt-24 lg:pt-28 pb-6 text-center min-h-[calc(100vh-140px)]">
+    <div className="relative flex flex-1 flex-col items-center justify-start overflow-hidden px-4 pt-10 sm:pt-16 lg:pt-20 pb-4 text-center min-h-[calc(100vh-160px)]">
       {/* ================= Centered Content Header (Foreground, z-10) ================= */}
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 16 }}
@@ -61,28 +61,27 @@ export default function NotFoundPage() {
       {/* ================= Massive Watermark "404" Layered Directly Underneath & Overlapping ================= */}
       <motion.div
         aria-hidden="true"
-        initial={reduceMotion ? false : { opacity: 0, y: 24 }}
         animate={
           reduceMotion
-            ? { opacity: 1, y: 0 }
+            ? undefined
             : {
-                opacity: 1,
-                y: [0, -10, 0],
+                y: [0, -8, 0],
               }
         }
         transition={
           reduceMotion
-            ? { duration: 0.4 }
+            ? undefined
             : {
-                opacity: { duration: 0.6, ease: 'easeOut' },
-                y: { duration: 5, repeat: Infinity, ease: 'easeInOut' },
+                duration: 5,
+                repeat: Infinity,
+                ease: 'easeInOut',
               }
         }
-        className="pointer-events-none relative -mt-8 sm:-mt-14 lg:-mt-20 z-0 select-none text-center leading-none w-full"
+        className="pointer-events-none relative -mt-6 sm:-mt-10 lg:-mt-14 z-0 select-none text-center leading-none w-full"
       >
-        <div className="text-[clamp(14rem,36vw,32rem)] font-extrabold tracking-[-0.04em] text-slate-900/[0.08] dark:text-white/[0.08] select-none leading-none">
+        <span className="inline-block text-[clamp(9rem,24vw,20rem)] font-bold tracking-tight text-slate-300 dark:text-slate-700 select-none leading-none opacity-90">
           404
-        </div>
+        </span>
       </motion.div>
     </div>
   );
