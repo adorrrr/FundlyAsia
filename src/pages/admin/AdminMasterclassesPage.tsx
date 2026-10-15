@@ -130,8 +130,8 @@ export default function AdminMasterclassesPage() {
           </>
         }
       />
-      {/* 3 Overview Stat Tiles: Session Total Enroll, Total Price, Total Refund */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* 4 Overview Stat Tiles: Session Total Enroll, Total Price, Total Refund, Current Total Amount */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           label={l({ en: 'Session Total Enroll', bn: 'সেশন মোট এনরোল' })}
           value={formatNumber(stats.totalEnroll)}
@@ -144,11 +144,7 @@ export default function AdminMasterclassesPage() {
         <StatTile
           label={l({ en: 'Total Price', bn: 'মোট প্রাইস' })}
           value={formatMoney(stats.totalPrice)}
-          note={
-            stats.totalRefund > 0
-              ? `${l({ en: 'Net', bn: 'নেট সংগ্রহ' })}: ${formatMoney(Math.max(0, stats.totalPrice - stats.totalRefund))}`
-              : l({ en: 'Total collected', bn: 'মোট সংগৃহীত ফি' })
-          }
+          note={l({ en: 'Gross collections', bn: 'মোট সংগৃহীত ফি' })}
         />
         <StatTile
           label={l({ en: 'Total Refund', bn: 'মোট রিফান্ড' })}
@@ -158,6 +154,11 @@ export default function AdminMasterclassesPage() {
               ? `${formatNumber(stats.refundCount)} ${l({ en: 'refunded registrations', bn: 'টি রিফান্ড সম্পন্ন' })}`
               : l({ en: 'No refunds issued', bn: 'কোনো রিফান্ড নেই' })
           }
+        />
+        <StatTile
+          label={l({ en: 'Current Total Amount', bn: 'বর্তমান মোট অ্যামাউন্ট' })}
+          value={formatMoney(Math.max(0, stats.totalPrice - stats.totalRefund))}
+          note={l({ en: 'Net after refunds', bn: 'রিফান্ড পরবর্তী মোট জমা' })}
         />
       </div>
 
