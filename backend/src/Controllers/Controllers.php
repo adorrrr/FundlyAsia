@@ -144,6 +144,9 @@ final class AuthController
 
     public static function me(Request $req): void
     {
+        if (empty($_COOKIE['fundly_sid']) && session_status() !== PHP_SESSION_ACTIVE) {
+            throw new HttpException(401, 'unauthenticated', 'Not authenticated.');
+        }
         Auth::startSession();
         if (!empty($_SESSION['admin_id'])) {
             Response::json(self::sessionUser(Auth::requireAdmin()));

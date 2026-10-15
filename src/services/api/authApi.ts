@@ -59,9 +59,12 @@ setUnauthorizedHandler(() => {
   saveSession(null);
 });
 
+let lastLoginTime = 0;
+
 export function saveSession(user: SessionUser | null) {
   try {
     if (user && (user.role === 'admin' || user.emailVerified)) {
+      lastLoginTime = Date.now();
       const str = JSON.stringify(user);
       sessionStorage.setItem(SESSION_STORAGE_KEY, str);
       localStorage.setItem(SESSION_STORAGE_KEY, str);
@@ -117,6 +120,9 @@ export const apiAuthService: AuthService = {
       return me;
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
+        if (Date.now() - lastLoginTime < 15000 && loadSession()) {
+          return loadSession();
+        }
         saveSession(null);
         return null;
       }

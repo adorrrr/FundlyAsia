@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Notice } from '@/components/ui/Feedback';
 import { useI18n } from '@/i18n/I18nProvider';
 import { useAuth } from '@/app/providers/AuthProvider';
@@ -61,6 +62,7 @@ interface GoogleTokenResponse {
 export function GoogleButton({ next }: { next?: string | null }) {
   const { d, l } = useI18n();
   const { refresh } = useAuth();
+  const nav = useNavigate();
   const toast = useToast();
   const [missingConfig, setMissingConfig] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -119,7 +121,7 @@ export function GoogleButton({ next }: { next?: string | null }) {
             const target = !user?.hasBusinessProfile
               ? '/onboarding/business-profile'
               : (next && next.startsWith('/') && !next.startsWith('/onboarding') ? next : '/dashboard');
-            window.location.replace(target);
+            nav(target, { replace: true });
           } catch (err: unknown) {
             setBusy(false);
             const msg = err instanceof Error ? err.message : 'Google sign-in failed.';

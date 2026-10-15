@@ -5,6 +5,7 @@ import type { SessionUser } from '@/types';
 
 interface AuthValue {
   user: SessionUser | null;
+  initializing: boolean;
   /** Re-read the session after a service call changed it. */
   refresh: () => SessionUser | null;
   logout: () => Promise<void>;
@@ -24,15 +25,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const s = authService.getSession();
     return isVerifiedUser(s) ? s : null;
   });
+  const [initializing, setInitializing] = useState<boolean>(() => !authService.getSession());
 
   useEffect(() => {
     // 1. Initial server session verification
     if (authService.syncSession) {
-      authService.syncSession().then((u) => {
-        setUser(isVerifiedUser(u) ? u : null);
-      }).catch(() => {
-        // preserve local session on transient network error
-      });
+      authService.syncSession()
+        .then((u) => {
+          setUser(isVerifiedUser(u) ? u : null);
+        })
+        .catch(() => {
+          // preserve local session on transient network error
+        })
+        .finally(() => {
+          setInitializing(false);
+        });
+    } else {
+      setInitializing(false);
     }
 
     // 2. Cross-tab synchronization listener
@@ -40,23 +49,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(isVerifiedUser(newUser) ? newUser : null);
     });
 
-    // 3. Tab visibility / window focus check
-    const onFocusOrVisible = () => {
+    // 3. Tab visibility check (throttled to avoid race conditions with auth popups)
+    let lastSync = Date.now();
+    const onVisibilityChange = () => {
       if (document.visibilityState === 'visible' && authService.syncSession) {
+        if (Date.now() - lastSync < 30000) return;
+        lastSync = Date.now();
         authService.syncSession().then((u) => {
           setUser(isVerifiedUser(u) ? u : null);
-        }).catch(() => {
-          // preserve local session on transient network error
-        });
+        }).catch(() => {});
       }
     };
-    document.addEventListener('visibilitychange', onFocusOrVisible);
-    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
       unsub();
-      document.removeEventListener('visibilitychange', onFocusOrVisible);
-      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
@@ -70,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.logout();
     setUser(null);
   }, []);
-  const value = useMemo(() => ({ user, refresh, logout }), [user, refresh, logout]);
+  const value = useMemo(() => ({ user, initializing, refresh, logout }), [user, initializing, refresh, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

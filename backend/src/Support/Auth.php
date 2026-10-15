@@ -35,6 +35,9 @@ final class Auth
     /** @return array<string,mixed> */
     public static function requireAdmin(): array
     {
+        if (empty($_COOKIE['fundly_sid']) && session_status() !== PHP_SESSION_ACTIVE) {
+            throw new HttpException(401, 'unauthenticated', 'Please sign in as admin.');
+        }
         self::startSession();
         $id = $_SESSION['admin_id'] ?? null;
         if (!$id) {
@@ -63,6 +66,9 @@ final class Auth
     /** @return array<string,mixed> */
     public static function requireUser(): array
     {
+        if (empty($_COOKIE['fundly_sid']) && session_status() !== PHP_SESSION_ACTIVE) {
+            throw new HttpException(401, 'unauthenticated', 'Please sign in.');
+        }
         self::startSession();
         $id = $_SESSION['user_id'] ?? null;
         if (!$id) {
