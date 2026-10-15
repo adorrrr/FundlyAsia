@@ -77,6 +77,7 @@ return static function (Router $r): void {
     $r->add('POST', '/admin/refunds/{id}/reject', [AdminController::class, 'rejectRefund']);
     $r->add('POST', '/admin/refunds/{id}/complete', [AdminController::class, 'completeRefund']);
     $r->add('GET', '/admin/results', [AdminController::class, 'results']);
+    $r->add('GET', '/admin/reports', [AdminController::class, 'reports']);
     $r->add('GET', '/admin/scoring-rules', [AdminController::class, 'scoringRules']);
     $r->add('PUT', '/admin/scoring-rules', [AdminController::class, 'updateScoringRules']);
     $r->add('GET', '/admin/questions', [AdminController::class, 'questions']);

@@ -624,6 +624,14 @@ final class AdminController
         Response::json(\Fundly\Repositories\AdminRepository::listResults($band, $search));
     }
 
+    public static function reports(Request $req): void
+    {
+        Auth::requireAdmin();
+        $from = is_string($_GET['from'] ?? null) ? trim($_GET['from']) : '';
+        $to = is_string($_GET['to'] ?? null) ? trim($_GET['to']) : '';
+        Response::json(\Fundly\Repositories\AdminRepository::reports($from, $to));
+    }
+
     public static function scoringRules(Request $req): void
     {
         Auth::requireAdmin();

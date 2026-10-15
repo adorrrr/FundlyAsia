@@ -21,6 +21,7 @@ import { apiRegistrationService } from './api/registrationApi';
 import { apiPaymentService } from './api/paymentApi';
 import { apiEligibilityService } from './api/eligibilityApi';
 import { apiAdminService } from './api/adminApi';
+import { apiReportsService } from './api/reportsApi';
 
 export const IS_DEMO = DATA_MODE !== 'api';
 
@@ -31,7 +32,7 @@ export const registrationService: RegistrationService = DATA_MODE === 'api' ? ap
 export const paymentService: PaymentService = DATA_MODE === 'api' ? apiPaymentService : mockPaymentService;
 export const eligibilityService: EligibilityService = DATA_MODE === 'api' ? apiEligibilityService : mockEligibilityService;
 export const adminService: AdminService = DATA_MODE === 'api' ? apiAdminService : mockAdminService;
-export const reportsService: ReportsService = mockReportsService;
+export const reportsService: ReportsService = DATA_MODE === 'api' ? apiReportsService : mockReportsService;
 
 export { registrationAvailability } from './masterclassService';
 export { ServiceError } from './errors';

@@ -45,8 +45,8 @@ export default function AdminReportsPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatTile label={a.regs} value={formatNumber(data.registrations.rows.length)} />
             <StatTile label={a.checks} value={formatNumber(data.checks.rows.length)} />
-            <StatTile label={d.status.paid} value={formatNumber(data.registrations.byPayment.paid)} />
-            <StatTile label={d.status.refund_requested} value={formatNumber(data.registrations.byPayment.refund_requested)} />
+            <StatTile label={d.status.paid} value={formatNumber(data.registrations.byPayment?.paid ?? 0)} />
+            <StatTile label={d.status.refund_requested} value={formatNumber(data.registrations.byPayment?.refund_requested ?? 0)} />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
@@ -55,7 +55,7 @@ export default function AdminReportsPage() {
                 {a.regs} · {a.byStatus}
               </SectionTitle>
               {data.registrations.rows.length ? (
-                <BarList caption={`${a.regs} ${a.byStatus}`} data={(Object.keys(data.registrations.byPayment) as PaymentStatus[]).map((k) => ({ key: k, label: d.status[k], value: data.registrations.byPayment[k] }))} />
+                <BarList caption={`${a.regs} ${a.byStatus}`} data={(Object.keys(data.registrations.byPayment || {}) as PaymentStatus[]).map((k) => ({ key: k, label: d.status[k] || k, value: data.registrations.byPayment[k] ?? 0 }))} />
               ) : (
                 <p className="text-body text-slate">{a.empty}</p>
               )}
@@ -65,7 +65,7 @@ export default function AdminReportsPage() {
                 {a.checks} · {a.byBand}
               </SectionTitle>
               {data.checks.rows.length ? (
-                <BarList caption={`${a.checks} ${a.byBand}`} data={readinessBands.map((b) => ({ key: b.band, label: d.bands[b.band], value: data.checks.byBand[b.band], colorClass: bandColor[b.band] }))} />
+                <BarList caption={`${a.checks} ${a.byBand}`} data={readinessBands.map((b) => ({ key: b.band, label: d.bands[b.band] || b.band, value: data.checks.byBand?.[b.band] ?? 0, colorClass: bandColor[b.band] }))} />
               ) : (
                 <p className="text-body text-slate">{a.empty}</p>
               )}
@@ -75,7 +75,7 @@ export default function AdminReportsPage() {
           <section className="surface p-5 sm:p-6">
             <SectionTitle
               action={
-                <Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} onClick={() => { downloadCsv('fundly-report-funnel.csv', a.funnelSteps.map((s, i) => ({ step: s, count: [data.funnel.signedUp, data.funnel.profiled, data.funnel.registered, data.funnel.assessed][i] }))); exported(); }}>
+                <Button size="sm" variant="ghost" icon={<Download className="h-3.5 w-3.5" />} onClick={() => { downloadCsv('fundly-report-funnel.csv', a.funnelSteps.map((s, i) => ({ step: s, count: [data.funnel.signedUp ?? 0, data.funnel.profiled ?? 0, data.funnel.registered ?? 0, data.funnel.assessed ?? 0][i] }))); exported(); }}>
                   {d.common.exportCsv}
                 </Button>
               }
@@ -84,7 +84,7 @@ export default function AdminReportsPage() {
             </SectionTitle>
             <BarList
               caption={a.funnel}
-              data={a.funnelSteps.map((s, i) => ({ key: String(i), label: s, value: [data.funnel.signedUp, data.funnel.profiled, data.funnel.registered, data.funnel.assessed][i], colorClass: i === 3 ? 'bg-ink' : undefined }))}
+              data={a.funnelSteps.map((s, i) => ({ key: String(i), label: s, value: [data.funnel.signedUp ?? 0, data.funnel.profiled ?? 0, data.funnel.registered ?? 0, data.funnel.assessed ?? 0][i], colorClass: i === 3 ? 'bg-ink' : undefined }))}
             />
           </section>
         </div>

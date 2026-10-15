@@ -1908,4 +1908,159 @@ final class AdminRepository
             $st->execute([(float) $w, $now, (string) $k]);
         }
     }
+
+    /** @return array<string,mixed> */
+    public static function reports(string $from = '', string $to = ''): array
+    {
+        $pdo = Db::pdo();
+
+        // 1. Registrations
+        $regSql = 'SELECT r.id, DATE(r.created_at) AS reg_date, r.created_at, u.full_name, bp.business_name, m.title_en, r.status, r.payment_status, COALESCE(r.amount_paid, m.fee, 0) AS amount
+                   FROM registrations r
+                   JOIN users u ON u.id = r.user_id
+                   LEFT JOIN business_profiles bp ON bp.user_id = u.id
+                   JOIN masterclasses m ON m.id = r.masterclass_id
+                   WHERE 1=1';
+        $regParams = [];
+        if ($from !== '') {
+            $regSql .= ' AND DATE(r.created_at) >= ?';
+            $regParams[] = $from;
+        }
+        if ($to !== '') {
+            $regSql .= ' AND DATE(r.created_at) <= ?';
+            $regParams[] = $to;
+        }
+        $regSql .= ' ORDER BY r.id DESC';
+
+        $st = $pdo->prepare($regSql);
+        $st->execute($regParams);
+        $rawRegs = $st->fetchAll();
+
+        $byPayment = [
+            'pending' => 0,
+            'paid' => 0,
+            'refund_requested' => 0,
+            'refunded' => 0,
+        ];
+
+        $regRows = [];
+        foreach ($rawRegs as $r) {
+            $ps = $r['payment_status'] ?? 'pending';
+            if ($ps === 'pending_verification') {
+                $byPayment['pending']++;
+            } elseif ($ps === 'partially_refunded') {
+                $byPayment['refunded']++;
+            } elseif (isset($byPayment[$ps])) {
+                $byPayment[$ps]++;
+            } else {
+                $byPayment['pending']++;
+            }
+
+            $regRows[] = [
+                'id' => (string) $r['id'],
+                'date' => (string) ($r['reg_date'] ?? substr($r['created_at'], 0, 10)),
+                'name' => (string) ($r['full_name'] ?? ''),
+                'business' => (string) ($r['business_name'] ?? 'N/A'),
+                'masterclass' => (string) ($r['title_en'] ?? ''),
+                'status' => (string) ($r['status'] ?? 'pending'),
+                'payment' => (string) ($r['payment_status'] ?? 'pending'),
+                'amount' => (float) ($r['amount'] ?? 0),
+            ];
+        }
+
+        // 2. Checks (Assessments)
+        $chkSql = 'SELECT ar.id, DATE(ar.created_at) AS chk_date, ar.created_at, COALESCE(bp.business_name, "N/A") AS business_name, u.full_name, ar.score, ar.band
+                   FROM assessment_results ar
+                   JOIN users u ON u.id = ar.user_id
+                   LEFT JOIN business_profiles bp ON bp.user_id = u.id
+                   WHERE 1=1';
+        $chkParams = [];
+        if ($from !== '') {
+            $chkSql .= ' AND DATE(ar.created_at) >= ?';
+            $chkParams[] = $from;
+        }
+        if ($to !== '') {
+            $chkSql .= ' AND DATE(ar.created_at) <= ?';
+            $chkParams[] = $to;
+        }
+        $chkSql .= ' ORDER BY ar.id DESC';
+
+        $st = $pdo->prepare($chkSql);
+        $st->execute($chkParams);
+        $rawChks = $st->fetchAll();
+
+        $byBand = [
+            'low' => 0,
+            'needs_improvement' => 0,
+            'moderate' => 0,
+            'stronger' => 0,
+        ];
+
+        $chkRows = [];
+        foreach ($rawChks as $c) {
+            $b = $c['band'] ?? 'low';
+            if (isset($byBand[$b])) {
+                $byBand[$b]++;
+            }
+
+            $chkRows[] = [
+                'id' => (string) $c['id'],
+                'date' => (string) ($c['chk_date'] ?? substr($c['created_at'], 0, 10)),
+                'business' => (string) ($c['business_name'] ?? 'N/A'),
+                'owner' => (string) ($c['full_name'] ?? ''),
+                'score' => (int) ($c['score'] ?? 0),
+                'band' => (string) ($c['band'] ?? 'low'),
+            ];
+        }
+
+        // 3. Funnel
+        $signedUpSql = "SELECT COUNT(*) FROM users WHERE status = 'active'";
+        $signedUpParams = [];
+        if ($from !== '') { $signedUpSql .= " AND DATE(created_at) >= ?"; $signedUpParams[] = $from; }
+        if ($to !== '') { $signedUpSql .= " AND DATE(created_at) <= ?"; $signedUpParams[] = $to; }
+        $st = $pdo->prepare($signedUpSql);
+        $st->execute($signedUpParams);
+        $signedUp = (int) $st->fetchColumn();
+
+        $profiledSql = "SELECT COUNT(DISTINCT user_id) FROM business_profiles WHERE 1=1";
+        $profiledParams = [];
+        if ($from !== '') { $profiledSql .= " AND DATE(created_at) >= ?"; $profiledParams[] = $from; }
+        if ($to !== '') { $profiledSql .= " AND DATE(created_at) <= ?"; $profiledParams[] = $to; }
+        $st = $pdo->prepare($profiledSql);
+        $st->execute($profiledParams);
+        $profiled = (int) $st->fetchColumn();
+
+        $registeredSql = "SELECT COUNT(DISTINCT user_id) FROM registrations WHERE status <> 'cancelled'";
+        $registeredParams = [];
+        if ($from !== '') { $registeredSql .= " AND DATE(created_at) >= ?"; $registeredParams[] = $from; }
+        if ($to !== '') { $registeredSql .= " AND DATE(created_at) <= ?"; $registeredParams[] = $to; }
+        $st = $pdo->prepare($registeredSql);
+        $st->execute($registeredParams);
+        $registered = (int) $st->fetchColumn();
+
+        $assessedSql = "SELECT COUNT(DISTINCT user_id) FROM assessment_results WHERE 1=1";
+        $assessedParams = [];
+        if ($from !== '') { $assessedSql .= " AND DATE(created_at) >= ?"; $assessedParams[] = $from; }
+        if ($to !== '') { $assessedSql .= " AND DATE(created_at) <= ?"; $assessedParams[] = $to; }
+        $st = $pdo->prepare($assessedSql);
+        $st->execute($assessedParams);
+        $assessed = (int) $st->fetchColumn();
+
+        return [
+            'registrations' => [
+                'rows' => $regRows,
+                'byPayment' => $byPayment,
+            ],
+            'checks' => [
+                'rows' => $chkRows,
+                'byBand' => $byBand,
+            ],
+            'funnel' => [
+                'signedUp' => $signedUp,
+                'profiled' => $profiled,
+                'registered' => $registered,
+                'assessed' => $assessed,
+            ],
+        ];
+    }
 }
