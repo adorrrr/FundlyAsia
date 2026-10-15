@@ -39,7 +39,14 @@ import { TicketModal } from '@/components/masterclasses/TicketModal';
 
 type ActiveTab = 'registrations' | 'verifications' | 'refunds';
 
-const PAYMENT: PaymentStatus[] = [
+const PAYMENT_FILTERS: PaymentStatus[] = [
+  'pending',
+  'paid',
+  'refund_requested',
+  'refunded',
+];
+
+const ALL_PAYMENT_STATUSES: PaymentStatus[] = [
   'not_required',
   'pending',
   'pending_verification',
@@ -151,7 +158,12 @@ export default function AdminRegistrationsPage() {
             v.toLowerCase().includes(query)
           )) &&
         (!mc || r.masterclassId === mc) &&
-        (pay === 'all' || r.paymentStatus === pay)
+        (pay === 'all' ||
+          (pay === 'pending'
+            ? r.paymentStatus === 'pending' || r.paymentStatus === 'pending_verification'
+            : pay === 'refunded'
+            ? r.paymentStatus === 'refunded' || r.paymentStatus === 'partially_refunded'
+            : r.paymentStatus === pay))
     );
   }, [regs.data, q, mc, pay]);
 
@@ -441,7 +453,7 @@ export default function AdminRegistrationsPage() {
               onChange={setPay}
               options={[
                 { value: 'all', label: d.common.all },
-                ...PAYMENT.map((p) => ({ value: p, label: d.status[p] })),
+                ...PAYMENT_FILTERS.map((p) => ({ value: p, label: d.status[p] })),
               ]}
             />
           </div>
@@ -933,7 +945,7 @@ export default function AdminRegistrationsPage() {
                 onChange={(e) =>
                   setCorrection((c) => ({ ...c, status: e.target.value as PaymentStatus }))
                 }
-                options={PAYMENT.map((p) => ({ value: p, label: d.status[p] }))}
+                options={ALL_PAYMENT_STATUSES.map((p) => ({ value: p, label: d.status[p] }))}
               />
               <TextField
                 label={a.reason}
