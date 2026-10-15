@@ -55,11 +55,12 @@ export default function SignupPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create account.';
       if (err instanceof ServiceError && err.code === 'email_taken') {
-        setErrors({ email: 'An account with this email already exists.' });
+        setErrors({ email: d.auth.emailTaken });
+        toast(d.auth.emailTaken, 'error');
       } else {
         setErrors({ form: msg });
+        toast(msg, 'error');
       }
-      toast(msg, 'error');
     } finally {
       setBusy(false);
     }

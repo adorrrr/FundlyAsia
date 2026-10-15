@@ -186,9 +186,17 @@ final class Auth
         $pdo = Db::pdo();
         self::checkThrottle($email, $ip);
 
-        $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-        $st->execute([$email]);
+        $normEmail = strtolower(trim($email));
+
+        $st = $pdo->prepare('SELECT id FROM users WHERE LOWER(TRIM(email)) = ?');
+        $st->execute([$normEmail]);
         if ($st->fetchColumn()) {
+            throw new HttpException(409, 'email_taken', 'An account with this email already exists.');
+        }
+
+        $admSt = $pdo->prepare('SELECT id FROM admin_users WHERE LOWER(TRIM(email)) = ?');
+        $admSt->execute([$normEmail]);
+        if ($admSt->fetchColumn()) {
             throw new HttpException(409, 'email_taken', 'An account with this email already exists.');
         }
 

@@ -324,6 +324,14 @@ final class BusinessProfileRepository
         $pdo = Db::pdo();
         $now = Db::now();
 
+        if (!empty($v['email'])) {
+            $bpSt = $pdo->prepare('SELECT user_id FROM business_profiles WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) AND user_id != ?');
+            $bpSt->execute([$v['email'], $userId]);
+            if ($bpSt->fetchColumn()) {
+                throw new \Fundly\Support\HttpException(409, 'email_taken', 'This business email is already associated with another SME account.');
+            }
+        }
+
         $existing = self::findByUserId($userId);
         if ($existing) {
             $st = $pdo->prepare(

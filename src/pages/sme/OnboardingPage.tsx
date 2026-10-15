@@ -32,6 +32,8 @@ export default function OnboardingPage() {
             if (err instanceof ServiceError && err.code === 'invalid_credentials') {
               toast('Session expired. Please sign in again.', 'error');
               nav('/auth/login');
+            } else if (err instanceof ServiceError && err.code === 'email_taken') {
+              toast(d.auth.emailTaken, 'error');
             } else if (err instanceof ServiceError && err.code === 'validation') {
               toast(d.validation.fixErrors, 'error');
             } else {

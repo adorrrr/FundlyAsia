@@ -69,9 +69,12 @@ export const mockAuthService: AuthService = {
   },
   async signup({ name, email }) {
     await delay(700);
-    const existing = db.get().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    const id = existing?.id ?? uid('u');
-    if (!existing) db.update((st) => st.users.push({ id, name, email, emailVerified: true }));
+    const existing = db.get().users.find((u) => u.email.trim().toLowerCase() === email.trim().toLowerCase());
+    if (existing) {
+      throw new ServiceError('email_taken', 'An account with this email already exists.');
+    }
+    const id = uid('u');
+    db.update((st) => st.users.push({ id, name, email: email.trim().toLowerCase(), emailVerified: true }));
     const s: StoredSession = { userId: id, role: 'sme' };
     writeSession(s);
     return toSessionUser(s)!;
