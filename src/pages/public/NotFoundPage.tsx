@@ -38,7 +38,10 @@ export default function NotFoundPage() {
         }
         className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none overflow-hidden"
       >
-        <span className="text-[clamp(15rem,38vw,34rem)] font-extrabold tracking-tighter text-slate-400/[0.18] dark:text-white/[0.06] select-none leading-none">
+        <span
+          className="text-[clamp(16rem,42vw,36rem)] font-extrabold tracking-tighter select-none leading-none"
+          style={{ color: 'rgba(20, 32, 51, 0.11)' }}
+        >
           404
         </span>
       </motion.div>
